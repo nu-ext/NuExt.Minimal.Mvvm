@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <RootNamespace>Minimal.Mvvm.Tests</RootNamespace>
     <NoWarn>$(NoWarn);NETSDK1233</NoWarn>
   </PropertyGroup>
 

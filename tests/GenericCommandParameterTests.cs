@@ -1,11 +1,10 @@
-﻿using Minimal.Mvvm;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
-namespace NuExt.Minimal.Mvvm.Tests
+namespace Minimal.Mvvm.Tests
 {
     class GenericCommandParameterTests
     {
-        protected static ICommand<T> CreateCommand<T>(Action<T> execute, Func<T, bool>? canExecute = null)
+        protected static IRelayCommand<T> CreateCommand<T>(Action<T> execute, Func<T, bool>? canExecute = null)
         {
             return new RelayCommand<T>(execute, canExecute);
         }
@@ -15,32 +14,32 @@ namespace NuExt.Minimal.Mvvm.Tests
         {
             var command = CreateCommand<BindingDirection>(x => { }, x => true);
 
-            command.CanExecute(BindingDirection.TwoWay);
+            Assert.That(command.CanExecute(BindingDirection.TwoWay), Is.True);
             command.Execute(BindingDirection.TwoWay);
 
-            command.CanExecute((object)BindingDirection.TwoWay);
+            Assert.That(command.CanExecute((object)BindingDirection.TwoWay), Is.True);
             command.Execute((object)BindingDirection.TwoWay);
 
-            command.CanExecute(1);
+            Assert.That(command.CanExecute(1), Is.True);
             command.Execute(1);
 
-            command.CanExecute("TwoWay");
+            Assert.That(command.CanExecute("TwoWay"), Is.True);
             command.Execute("TwoWay");
 
-            command.CanExecute("x");
-            Assert.Throws<ArgumentException>(() => command.Execute("x"));
+            Assert.That(command.CanExecute("x"), Is.False);
+            Assert.Throws<InvalidCastException>(() => command.Execute("x"));
 
             command.CanExecute((object?)null);
-            Assert.Throws<NullReferenceException>(() => command.Execute((object?)null));
+            Assert.Throws<InvalidCastException>(() => command.Execute((object?)null));
 
             command.CanExecute(new object());
-            Assert.Throws<ArgumentException>(() => command.Execute(new object()));
+            Assert.Throws<InvalidCastException>(() => command.Execute(new object()));
 
-            command.CanExecute(int.MaxValue);
+            Assert.That(command.CanExecute(int.MaxValue), Is.True);
             command.Execute(int.MaxValue);
 
-            command.CanExecute(long.MaxValue);
-            command.Execute(long.MaxValue);
+            Assert.That(command.CanExecute(long.MaxValue), Is.False);
+            Assert.Throws<InvalidCastException>(() => command.Execute(long.MaxValue));
 
             Assert.Pass();
         }

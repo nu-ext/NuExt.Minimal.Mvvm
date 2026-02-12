@@ -1,45 +1,42 @@
 # NuExt.Minimal.Mvvm
 
-`NuExt.Minimal.Mvvm` is a lightweight MVVM (Model-View-ViewModel) framework designed to provide the essential components needed for implementing the MVVM pattern in .NET applications. This package focuses on supporting proper concurrent operations and does not have any external dependencies, making it easy to integrate and use in various projects.
+`NuExt.Minimal.Mvvm` is a **high-performance, dependency-free** MVVM framework for .NET focused on **robust async flows**, **deterministic command execution**, and a **clear, minimal API**.
 
-### Features
+## Features
 
-- **Command Implementations**:
-  - **`Minimal.Mvvm.RelayCommand`**: A simple command implementation that delegates its execution logic via delegates.
-  - **`Minimal.Mvvm.RelayCommand<T>`**: A relay command that operates with generic parameters.
+- **Core:**
+  - `Minimal.Mvvm.BindableBase` — lightweight `INotifyPropertyChanged` base.
+  - `Minimal.Mvvm.ViewModelBase` — lean ViewModel foundation with simple service access.
 
-- **Asynchronous Command Support**:
-  - **`Minimal.Mvvm.AsyncCommand`**: An asynchronous command that facilitates non-blocking operations without parameters.
-  - **`Minimal.Mvvm.AsyncCommand<T>`**: An asynchronous command capable of handling operations with generic parameters.
+- **Command Model (self-validating):**
+  All commands (`RelayCommand`, `RelayCommand<T>`, `AsyncCommand`, `AsyncCommand<T>`, `CompositeCommand`) validate their state internally: if `CanExecute(parameter)` is `false`, `Execute(parameter)` performs no action. This guarantees consistent behavior for both UI-bound and programmatic calls.
 
-- **Simplified Model Development**:
-  - **`Minimal.Mvvm.BindableBase`**: A base class that implements `INotifyPropertyChanged`, simplifying property change notification in models.
+- **Command Implementations:**
+  - `Minimal.Mvvm.RelayCommand` / `RelayCommand<T>` - classic, **synchronous** delegate-based commands with optional concurrency control.
+  - `Minimal.Mvvm.AsyncCommand` / `AsyncCommand<T>` - full-featured **asynchronous** commands with **cancellation support**, reentrancy control, and predictable error propagation.
+  - `Minimal.Mvvm.CompositeCommand` - aggregates multiple commands and executes them **sequentially**; awaits `ExecuteAsync(...)` and calls `Execute(...)` for non-async commands.
 
-- **ViewModels Development**:
-  - **`Minimal.Mvvm.ViewModelBase`**: A base class for ViewModels, providing a foundation for building complex view models.
-
-- **Concurrent Command Execution**:
-  - All `IRelayCommand` command types (`RelayCommand`, `RelayCommand<T>`, `AsyncCommand`, `AsyncCommand<T>`) support concurrent executions. This allows multiple invocations of the same command simultaneously without interfering with other executions.
-
-- **CompositeCommand Implementation**:
-  - **`Minimal.Mvvm.CompositeCommand`**: Represents a command that aggregates multiple commands and executes them sequentially. This is useful when you need to perform a series of actions as a single command operation.
+- **Async & Concurrency:**
+  - Explicit separation: `ICommand.Execute` (fire-and-forget) vs `IAsyncCommand.ExecuteAsync` (awaitable with `CancellationToken`).
+  - Built-in reentrancy control via `AllowConcurrentExecution`.
+  - Comprehensive Exception Handling: Local (`UnhandledException`) and global (`AsyncCommand.GlobalUnhandledException`) events with `Handled` propagation control.
 
 - **Service Provider Integration**:
-  - **`Minimal.Mvvm.ServiceProvider`**: A service provider class that allows for easy registration and resolution of services, facilitating dependency injection within your application.
+  - **`Minimal.Mvvm.ServiceProvider`**: Lightweight service provider for registration and resolution of services, facilitating dependency injection within your application.
 
 ### Recommended Companion Package
 
-For an enhanced development experience, we highly recommend using the [`NuExt.Minimal.Mvvm.SourceGenerator`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.SourceGenerator) package alongside this framework. It provides a source generator that produces boilerplate code for your ViewModels at compile time, significantly reducing the amount of repetitive coding tasks and allowing you to focus more on the application-specific logic.
+For an enhanced development experience, we highly recommend using the [`NuExt.Minimal.Mvvm.SourceGenerator`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.SourceGenerator) package alongside this framework. It provides compile-time boilerplate generation for ViewModels.
 
 ### Installation
 
-You can install `NuExt.Minimal.Mvvm` via [NuGet](https://www.nuget.org/):
+Via [NuGet](https://www.nuget.org/):
 
 ```sh
 dotnet add package NuExt.Minimal.Mvvm
 ```
 
-Or through the Visual Studio package manager:
+Or via Visual Studio:
 
 1. Go to `Tools -> NuGet Package Manager -> Manage NuGet Packages for Solution...`.
 2. Search for `NuExt.Minimal.Mvvm`.
@@ -55,7 +52,7 @@ To install the source code package, use the following command:
 dotnet add package NuExt.Minimal.Mvvm.Sources
 ```
 
-Or through the Visual Studio package manager:
+Or via Visual Studio:
 
 1. Go to `Tools -> NuGet Package Manager -> Manage NuGet Packages for Solution...`.
 2. Search for `NuExt.Minimal.Mvvm.Sources`.
@@ -63,69 +60,105 @@ Or through the Visual Studio package manager:
 
 ### Usage
 
-#### Example Using AsyncCommand with CancellationTokenSource Support
+#### Example: Advanced AsyncCommand with Concurrency and Cancellation
 
 ```csharp
-public class MyViewModel : ViewModelBase
+public class SearchViewModel : ViewModelBase
 {
-    public IAsyncCommand MyCommand { get; }
+    public IAsyncCommand<string> SearchCommand { get; }
     public ICommand CancelCommand { get; }
 
-    public MyViewModel()
+    public SearchViewModel()
     {
-        MyCommand = new AsyncCommand(ExecuteAsync, CanExecute);
-        CancelCommand = new RelayCommand(Cancel, CanCancel);
-    }
-
-    private async Task ExecuteAsync()
-    {
-        // Retrieve the CancellationTokenSource for current execution method instance
-        var cts = MyCommand.CancellationTokenSource;
-        try
+        SearchCommand = new AsyncCommand<string>(SearchAsync, CanSearch)
         {
-            // Command execution logic
-            await Task.Delay(1000, cts.Token);
-        }
-        catch (OperationCanceledException)
+            AllowConcurrentExecution = true
+        };
+
+        AsyncCommand.GlobalUnhandledException += (sender, e) =>
         {
-            // Handle cancellation
-        }
+            Logger.LogError(e.Exception, "Global command error");
+            e.Handled = true;
+        };
+
+        CancelCommand = new RelayCommand(() => SearchCommand.Cancel());
     }
 
-    private bool CanExecute()
+    private async Task SearchAsync(string query, CancellationToken cancellationToken)
     {
-        // Logic that determines whether the command can execute
-        return true;
+        await Task.Delay(1000, cancellationToken);
+        Results = $"Results for: {query}";
     }
 
-    private void Cancel()
-    {
-        // Sends request to cancel the MyCommand execution
-        MyCommand.Cancel();
-    }
+    private bool CanSearch(string query) => !string.IsNullOrWhiteSpace(query);
 
-    private bool CanCancel()
+    private string _results;
+    public string Results
     {
-        // Logic that determines whether the cancel command can execute
-        return MyCommand.IsExecuting;
+        get => _results;
+        private set => SetProperty(ref _results, value);
     }
 }
 ```
 
-#### Example Using BindableBase
+#### Example: Two-Tier Exception Handling
 
 ```csharp
-public class MyModel : BindableBase
+public class DataViewModel : ViewModelBase
 {
-    private string _name;
+    public IAsyncCommand LoadDataCommand { get; }
 
-    public string Name
+    public DataViewModel()
     {
-        get => _name;
-        set => SetProperty(ref _name, value);
+        LoadDataCommand = new AsyncCommand(LoadDataAsync);
+
+        LoadDataCommand.UnhandledException += (sender, e) =>
+        {
+            if (e.Exception is HttpRequestException httpEx)
+            {
+                ShowError($"Network error: {httpEx.Message}");
+                e.Handled = true;
+            }
+        };
+    }
+
+    private async Task LoadDataAsync(CancellationToken cancellationToken)
+    {
+        throw new HttpRequestException("Connection failed");
     }
 }
 ```
+
+#### Example Using Source Generator
+
+To further simplify your ViewModel development, consider using the source generator provided by the `NuExt.Minimal.Mvvm.SourceGenerator` package. Here's an example:
+
+```csharp
+using Minimal.Mvvm;
+
+public partial class ProductViewModel : ViewModelBase
+{
+    [Notify]
+    private string _name = string.Empty;
+    
+    [Notify(Setter = AccessModifier.Private)]
+    private decimal _price;
+    
+    public ProductViewModel()
+    {
+        SaveCommand = new AsyncCommand(SaveAsync);
+    }
+    
+    [Notify]
+    private async Task SaveAsync(CancellationToken token)
+    {
+        await Task.Delay(500, token);
+        Price = 99.99m;
+    }
+}
+```
+
+This automation helps to maintain clean and efficient code, improving overall productivity. For details on installing and using the source generator, refer to the [NuExt.Minimal.Mvvm.SourceGenerator](https://github.com/IvanGit/NuExt.Minimal.Mvvm.SourceGenerator) documentation.
 
 #### Example Using ServiceProvider
 
@@ -156,48 +189,10 @@ public class MyViewModel : ViewModelBase
 }
 ```
 
-#### Example Usage with Source Generator
-
-To further simplify your ViewModel development, consider using the source generator provided by the `NuExt.Minimal.Mvvm.SourceGenerator` package. Here's an example:
-
-```csharp
-using Minimal.Mvvm;
-
-public partial class MyModel : BindableBase
-{
-    [Notify]
-    private string? _description;
-
-    [Notify(Setter = AccessModifier.Private)]
-    private string _name;
-}
-```
-
-The source generator would produce the following code:
-
-```csharp
-partial class MyModel
-{
-    public string? Description
-    {
-        get => _description;
-        set => SetProperty(ref _description, value);
-    }
-
-    public string Name
-    {
-        get => _name;
-        private set => SetProperty(ref _name, value);
-    }
-}
-```
-
-This automation helps to maintain clean and efficient code, improving overall productivity. For details on installing and using the source generator, refer to the [NuExt.Minimal.Mvvm.SourceGenerator](https://github.com/IvanGit/NuExt.Minimal.Mvvm.SourceGenerator) documentation.
-
 ### Contributing
 
-Contributions are welcome! Feel free to submit issues, fork the repository, and send pull requests. Your feedback and suggestions for improvement are highly appreciated.
+Issues and PRs are welcome. Keep changes minimal and performance-conscious.
 
 ### License
 
-Licensed under the MIT License. See the LICENSE file for details.
+MIT. See LICENSE.

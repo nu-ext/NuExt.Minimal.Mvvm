@@ -4,21 +4,21 @@
     <TargetFrameworks>netstandard2.1;netstandard2.0;net10.0;net9.0;net8.0;net462</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
     <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release' or '$(Configuration)' == 'Sources'">true</GeneratePackageOnBuild>
-    <PackageTags>nuext;minimal;mvvm;wpf;ui;di;viewmodel;command;relaycommand;asynccommand;multiple;concurrent;async;servicecontainer</PackageTags>
+    <PackageTags>nuext;minimal;mvvm;view;viewmodel;model;ui;di;command;relaycommand;asynccommand;multiple;concurrent;async;servicecontainer;weakevent</PackageTags>
     <Description>NuExt.Minimal.Mvvm is an MVVM framework that offers a minimal set of components necessary to get started with the Model-View-ViewModel (MVVM) pattern.
 
 Commonly Used Types:
+Minimal.Mvvm.BindableBase
+Minimal.Mvvm.ViewModelBase
+Minimal.Mvvm.ServiceProvider
 Minimal.Mvvm.AsyncCommand
 Minimal.Mvvm.AsyncCommand&lt;T&gt;
-Minimal.Mvvm.BindableBase
-Minimal.Mvvm.CompositeCommand
 Minimal.Mvvm.RelayCommand
 Minimal.Mvvm.RelayCommand&lt;T&gt;
-Minimal.Mvvm.ServiceProvider
-Minimal.Mvvm.ViewModelBase</Description>
-    <Version>0.6.0</Version>
+Minimal.Mvvm.CompositeCommand
+Minimal.Mvvm.WeakEvent</Description>
+    <Version>0.7.0</Version>
     <RootNamespace>Minimal.Mvvm</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591;NETSDK1233</NoWarn>

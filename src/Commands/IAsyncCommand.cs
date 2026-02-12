@@ -1,56 +1,70 @@
 ﻿using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 
 namespace Minimal.Mvvm
 {
     /// <summary>
-    /// Interface for an asynchronous command, extending the functionality of IRelayCommand.
+    /// Represents an asynchronous command that supports cancellation and error handling.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This interface extends <see cref="IRelayCommand"/> to support asynchronous execution,
+    /// cancellation, and surfacing exceptions from the <see cref="ICommand.Execute(object)"/> path.
+    /// </para>
+    /// <para>
+    /// Exceptions thrown from <see cref="ExecuteAsync(object?)"/> and
+    /// <see cref="ExecuteAsync(object?, CancellationToken)"/> are propagated via the returned <see cref="Task"/>.
+    /// Exceptions (other than <see cref="OperationCanceledException"/>) thrown from the fire-and-forget
+    /// <see cref="ICommand.Execute(object)"/> path must be raised via <see cref="UnhandledException"/>.
+    /// </para>
+    /// <para>
+    /// Threading: <see cref="UnhandledException"/> may be raised from any thread. Subscribers must marshal
+    /// to their target context if needed.
+    /// </para>
+    /// </remarks>
     public interface IAsyncCommand : IRelayCommand
     {
         /// <summary>
-        /// Gets the current cancellation token source.
-        /// This is useful for tracking and managing ongoing operations,
-        /// and it is relevant when querying from within the execute method.
+        /// Occurs when an exception is thrown during <see cref="ICommand.Execute(object)"/>.
         /// </summary>
-        CancellationTokenSource? CancellationTokenSource { get; }
+        /// <remarks>
+        /// <para>
+        /// This event surfaces exceptions thrown by the fire-and-forget <see cref="ICommand.Execute(object)"/> path,
+        /// excluding <see cref="OperationCanceledException"/>.
+        /// </para>
+        /// <para>
+        /// This event may be raised from any thread; subscribers are responsible for marshaling.
+        /// </para>
+        /// </remarks>
+        event EventHandler<UnhandledCommandExceptionEventArgs>? UnhandledException;
 
         /// <summary>
-        /// Occurs when an exception is thrown during the execution of the command.
+        /// Cancels all currently executing operations for this command.
         /// </summary>
-        event EventHandler<ErrorEventArgs>? ExecutionFailed;
-
-        /// <summary>
-        /// Gets whether cancellation has been requested for this command.
-        /// </summary>
-        bool IsCancellationRequested { get; }
-
-        /// <summary>
-        /// Cancels the current asynchronous operations.
-        /// If a command is executing, this method triggers cancellation through the associated cancellation token.
-        /// </summary>
+        /// <remarks>
+        /// Thread-safe and idempotent.
+        /// </remarks>
         void Cancel();
 
         /// <summary>
         /// Executes the command asynchronously.
         /// </summary>
-        /// <param name="parameter">The parameter to be used by the command.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <param name="parameter">The command parameter.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        /// <exception cref="OperationCanceledException">The operation was canceled.</exception>
         Task ExecuteAsync(object? parameter);
 
         /// <summary>
-        /// Executes the command asynchronously with cancellation support.
+        /// Executes the command asynchronously with a cancellation token.
         /// </summary>
-        /// <param name="parameter">The parameter to be used by the command.</param>
-        /// <param name="cancellationToken">A cancellation token for managing the command execution.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
+        /// <param name="parameter">The command parameter.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        /// <exception cref="OperationCanceledException">
+        /// The operation was canceled via <see cref="Cancel"/>, <paramref name="cancellationToken"/>, or both.
+        /// </exception>
         Task ExecuteAsync(object? parameter, CancellationToken cancellationToken);
-
-        /// <summary>
-        /// Resets the cancellation state back to not canceled if it was in the notifying state.
-        /// </summary>
-        void ResetCancel();
     }
 }

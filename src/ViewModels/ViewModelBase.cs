@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,103 +9,126 @@ using System.Threading.Tasks;
 namespace Minimal.Mvvm
 {
     /// <summary>
-    /// Base class for ViewModels.
+    /// Base class for ViewModels providing property change notification and a hierarchical service location mechanism.
     /// </summary>
-    public abstract class ViewModelBase : BindableBase, IServiceProvider
+    /// <remarks>
+    /// <para>
+    /// This class implements the <strong>Service Locator pattern</strong> via its 
+    /// <see cref="GetService{T}(System.String)"/> method.
+    /// This design is a pragmatic choice for composite UI and MVVM scenarios where:
+    /// <list type="bullet">
+    /// <item>Dependencies cannot be fully known at ViewModel construction time.</item>
+    /// <item>Child ViewModels need to resolve context-specific services from a parent.</item>
+    /// <item>UI Behaviors or other runtime components must inject services into an existing ViewModel instance.</item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    public abstract class ViewModelBase : BindableBase, IAsyncInitializable, IParentedViewModel, IParameterizedViewModel, IServiceContainerProvider, INamedServiceProvider, IServicesProvider
     {
         private readonly Lazy<IServiceContainer> _services;
+        private readonly IServiceContainer? _fallbackServices;
         private readonly SemaphoreSlim _initLock = new(1, 1);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ViewModelBase"/> class.
         /// </summary>
-        protected ViewModelBase()
+        protected ViewModelBase() : this(fallbackServices: null)
         {
+        }
+
+        /// <summary>Initializes the ViewModel with an optional fallback service container used when local and parent resolution miss.</summary>
+        /// <param name="fallbackServices">The fallback container. May be <see langword="null"/>.</param>
+        protected ViewModelBase(IServiceContainer? fallbackServices)
+        {
+            _fallbackServices = fallbackServices;
             _services = new Lazy<IServiceContainer>(() => new ServiceProvider(this));
         }
 
         #region Properties
 
         private volatile bool _isInitialized;
-        /// <summary>
-        /// Gets a value indicating whether the ViewModel has been initialized.
-        /// </summary>
-        /// <value>
-        /// <c>true</c> if the ViewModel has been initialized; otherwise, <c>false</c>.
-        /// </value>
-        /// <remarks>
-        /// This property is thread-safe for reading.
-        /// </remarks>
+        /// <inheritdoc/>
         public bool IsInitialized => _isInitialized;
 
-        private object? _parameter;
-        /// <summary>
-        /// Gets or sets a parameter associated with the ViewModel.
-        /// </summary>
+        /// <inheritdoc/>
         public object? Parameter
         {
-            get => _parameter;
+            get;
             set
             {
-                if (_parameter == value) return;
-                if (!CanSetProperty(_parameter, value)) return;
-                _parameter = value;
+                if (field == value) return;
+                if (!CanSetProperty(field, value)) return;
+                field = value;
                 OnPropertyChanged(EventArgsCache.ParameterPropertyChanged);
             }
         }
 
-        private object? _parentViewModel;
-        /// <summary>
-        /// Gets or sets the parent ViewModel.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">
-        /// Thrown if set to the current instance itself.
-        /// </exception>
+        /// <inheritdoc/>
         public object? ParentViewModel
         {
-            get => _parentViewModel;
+            get;
             set
             {
-                if (_parentViewModel == value) return;
-                if (value == this) ThrowInvalidParentViewModelAssignment();
-                if (!CanSetProperty(_parentViewModel, value)) return;
-                _parentViewModel = value;
+                var oldValue = field;
+                if (field == value) return;
+                if (value is IParentedViewModel parent)
+                {
+                    var current = parent;
+                    while (current != null)
+                    {
+                        if (ReferenceEquals(current, this))
+                        {
+                            ThrowInvalidParentViewModelAssignment();
+                        }
+                        current = current.ParentViewModel as IParentedViewModel;
+                    }
+                }
+
+                if (!CanSetProperty(oldValue, value)) return;
+                field = value;
                 OnPropertyChanged(EventArgsCache.ParentViewModelPropertyChanged);
+                OnParentViewModelChanged(oldValue, value);
             }
         }
 
-        /// <summary>
-        /// Gets the service container for dependency injection and service resolution.
-        /// </summary>
+        /// <summary>Gets the service container for dependency injection and service resolution.</summary>
+        /// <remarks>
+        /// The container is created lazily on first access and delegates to this instance for parent resolution.
+        /// Publication is thread-safe; subsequent accesses return the same instance.
+        /// </remarks>
         public IServiceContainer Services => _services.Value;
 
+        protected bool IsServicesCreated => _services.IsValueCreated;
+
+        #endregion
+
+        #region Event Handlers
+
         /// <summary>
-        /// Gets the thread on which the current instance was created.
+        /// Called after <see cref="ParentViewModel"/> has changed.
         /// </summary>
-        public Thread Thread { get; } = Thread.CurrentThread;
+        /// <param name="oldValue">Previous parent.</param>
+        /// <param name="newValue">New parent.</param>
+        /// <remarks>
+        /// Override to update parent-dependent state or subscriptions.
+        /// </remarks>
+        protected virtual void OnParentViewModelChanged(object? oldValue, object? newValue)
+        {
+        }
 
         #endregion
 
         #region Methods
 
         /// <summary>
-        /// Checks if the current thread is the same as the thread on which this instance was created.
-        /// </summary>
-        /// <returns>True if the current thread is the same as the creation thread; otherwise, false.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool CheckAccess()
-        {
-            return Thread == Thread.CurrentThread;
-        }
-
-        /// <summary>
         /// Gets a service of the specified type.
         /// </summary>
         /// <typeparam name="T">The type of service to retrieve.</typeparam>
-        /// <returns>An instance of the requested service, or <c>null</c> if the service is not available.</returns>
-        public T? GetService<T>()
+        /// <returns>An instance of the requested service, or <see langword="null"/> if the service is not available.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T? GetService<T>() where T : class
         {
-            return (T?)GetService(typeof(T), null);
+            return (T?)((INamedServiceProvider)this).GetService(typeof(T), name: null);
         }
 
         /// <summary>
@@ -113,52 +138,211 @@ namespace Minimal.Mvvm
         /// <param name="name">
         /// The name of the service to resolve. This can be used to distinguish between multiple services of the same type.
         /// </param>
-        /// <returns>An instance of the requested service, or <c>null</c> if the service is not available.</returns>
-        public T? GetService<T>(string name)
+        /// <returns>An instance of the requested service, or <see langword="null"/> if the service is not available.</returns>
+        /// <remarks>Empty name is treated as unnamed.</remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T? GetService<T>(string? name) where T : class
         {
-            return (T?)GetService(typeof(T), name);
+            return (T?)((INamedServiceProvider)this).GetService(typeof(T), name: name);
         }
 
         /// <summary>
-        /// Gets the service object of the specified type.
+        /// Gets the service of the specified type.
         /// </summary>
-        /// <param name="serviceType">An object that specifies the type of service object to get.</param>
-        /// <returns>A service object of type <paramref name="serviceType"/>. 
-        /// If there is no service object of type <paramref name="serviceType"/>, returns <c>null</c>.</returns>
+        /// <param name="serviceType">An object that specifies the type of service to get.</param>
+        /// <returns>A service of type <paramref name="serviceType"/>. 
+        /// If there is no service of type <paramref name="serviceType"/>, returns <see langword="null"/>.</returns>
         object? IServiceProvider.GetService(Type serviceType)
         {
-            return GetService(serviceType, null);
+            return ((INamedServiceProvider)this).GetService(serviceType, name: null);
         }
 
         /// <summary>
-        /// Gets the named service object of the specified type.
+        /// Gets the named service of the specified type.
         /// </summary>
-        /// <param name="serviceType">An object that specifies the type of service object to get.</param>
+        /// <param name="serviceType">An object that specifies the type of service to get.</param>
         /// <param name="name">
         /// The name of the service to resolve. This can be used to distinguish between multiple services of the same type.
         /// </param>
-        /// <returns>A service object of type <paramref name="serviceType"/>. 
-        /// If there is no service object of type <paramref name="serviceType"/>, returns <c>null</c>.</returns>
+        /// <returns>
+        /// A service of type <paramref name="serviceType"/>; or <see langword="null"/> if not found.
+        /// </returns>
         /// <remarks>
-        /// The service resolution order is:
-        /// 1. Local service container (<see cref="Services"/>).
-        /// 2. Parent <see cref="ViewModelBase"/> (if set), using the same <paramref name="name"/>.
-        /// 3. Parent <see cref="IServiceProvider"/> (if not a <see cref="ViewModelBase"/>), ignoring <paramref name="name"/>.
-        /// 4. Default service provider (<see cref="ServiceProvider.Default"/>), using the original <paramref name="name"/>.
+        /// <para>Empty name is treated as unnamed.</para>
+        /// <para>
+        /// Resolution order: 1) local container (<see cref="Services"/>), 2) fallback container (if any),
+        /// 3) parent ViewModel (named lookup if supported), 4) <see cref="ServiceProvider.Default"/>.
+        /// </para>
         /// </remarks>
-        public object? GetService(Type serviceType, string? name)
+        object? INamedServiceProvider.GetService(Type serviceType, string? name)
         {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(serviceType);
+#else
+            _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
+#endif
             var service = Services.GetService(serviceType, name);
-            switch (service)
+            if (service != null) return service;
+
+            service = _fallbackServices?.GetService(serviceType, name);
+            if (service != null) return service;
+
+            switch (ParentViewModel)
             {
-                case null when ParentViewModel is ViewModelBase parentViewModel:
-                    service = parentViewModel.GetService(serviceType, name);
+                case INamedServiceProvider parent:
+                    service = parent.GetService(serviceType, name);
                     break;
-                case null when ParentViewModel is IServiceProvider serviceProvider:
+                case IServiceProvider serviceProvider when name is null:
                     service = serviceProvider.GetService(serviceType);
                     break;
             }
             return service ?? ServiceProvider.Default.GetService(serviceType, name);
+        }
+
+        /// <summary>
+        /// Retrieves all unique service instances of the specified type by cascading through the ViewModel chain
+        /// and the configured fallback container. Does not include <see cref="ServiceProvider.Default"/>.
+        /// </summary>
+        /// <typeparam name="T">The type of service to retrieve.</typeparam>
+        /// <returns>
+        /// An enumerable sequence of distinct service instances of type <typeparamref name="T"/>.
+        /// </returns>
+        /// <remarks>Does not consult <see cref="ServiceProvider.Default"/>.</remarks>
+        public IEnumerable<T> GetServices<T>()
+        {
+            foreach (var service in GetServices(typeof(T)))
+            {
+                yield return (T)service;
+            }
+        }
+
+        /// <summary>
+        /// Retrieves all unique service instances of the specified type by cascading through the ViewModel chain
+        /// and the configured fallback container. Does not include <see cref="ServiceProvider.Default"/>.
+        /// </summary>
+        /// <param name="serviceType">The type of services to retrieve.</param>
+        /// <returns>
+        /// An enumerable sequence of distinct service instances of the specified type.
+        /// </returns>
+        /// <remarks>
+        /// Enumerates services only from scoped sources (local → fallback → parent).
+        /// Does not consult <see cref="ServiceProvider.Default"/> by design to keep enumeration deterministic.
+        /// </remarks>
+        public IEnumerable<object> GetServices(Type serviceType)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(serviceType);
+#else
+            _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
+#endif
+            HashSet<object>? services = null;
+            foreach (var service in Services.GetServices(serviceType))
+            {
+                Debug.Assert(service != null, $"Service is null for type {serviceType}");
+                if (service != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
+                {
+                    yield return service;
+                }
+            }
+
+            if (_fallbackServices != null)
+            {
+                foreach (var service in _fallbackServices.GetServices(serviceType))
+                {
+                    Debug.Assert(service != null, $"Service is null for type {serviceType}");
+                    if (service != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
+                    {
+                        yield return service;
+                    }
+                }
+            }
+
+            switch (ParentViewModel)
+            {
+                case IServicesProvider servicesProvider:
+                    foreach (var service in servicesProvider.GetServices(serviceType))
+                    {
+                        Debug.Assert(service != null, $"Service is null for type {serviceType}");
+                        if (service != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
+                        {
+                            yield return service;
+                        }
+                    }
+                    break;
+                case INamedServiceProvider namedServiceProvider:
+                    var nullNamedService = namedServiceProvider.GetService(serviceType, null);
+                    if (nullNamedService != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(nullNamedService))
+                    {
+                        yield return nullNamedService;
+                    }
+                    break;
+                case IServiceProvider serviceProvider:
+                    var typedService = serviceProvider.GetService(serviceType);
+                    if (typedService != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(typedService))
+                    {
+                        yield return typedService;
+                    }
+                    break;
+            }
+        }
+
+        /// <summary>Gets a service of type <typeparamref name="T"/> from the local container only.</summary>
+        /// <typeparam name="T">The type of service to retrieve.</typeparam>
+        /// <returns>An instance of the requested service, or <see langword="null"/> if the service is not available.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected T? GetLocalService<T>() where T : class
+        {
+            return GetLocalService<T>(name: null);
+        }
+
+        /// <summary>Gets a named service of type <typeparamref name="T"/> from the local container only.</summary>
+        /// <typeparam name="T">The type of service to retrieve.</typeparam>
+        /// <param name="name">
+        /// The name of the service to resolve. This can be used to distinguish between multiple services of the same type.
+        /// </param>
+        /// <returns>An instance of the requested service, or <see langword="null"/> if the service is not available.</returns>
+        /// <remarks>
+        /// Name comparison is ordinal and case-sensitive; empty is treated as unnamed.
+        /// Does not consult the fallback container, parent, or the default provider.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected T? GetLocalService<T>(string? name) where T : class
+        {
+            return (T?)Services.GetService(typeof(T), name, localOnly: true);
+        }
+
+        /// <summary>Gets all services of type <typeparamref name="T"/> from the local container only.</summary>
+        /// <typeparam name="T">The type of service to retrieve.</typeparam>
+        /// <returns>
+        /// An enumerable sequence of distinct service instances of type <typeparamref name="T"/>.
+        /// </returns>
+        protected IEnumerable<T> GetLocalServices<T>() where T : class
+        {
+            foreach (var service in Services.GetServices(typeof(T), localOnly: true))
+            {
+                yield return (T)service;
+            }
+        }
+
+        /// <summary>
+        /// Gets a service from the local container; if not found, tries the optional fallback container.
+        /// Does not consult ParentViewModel or ServiceProvider.Default.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected T? GetLocalOrFallbackService<T>() where T : class
+        {
+            return GetLocalOrFallbackService<T>(name: null);
+        }
+
+        /// <summary>
+        /// Gets a service from the local container; if not found, tries the optional fallback container.
+        /// Does not consult ParentViewModel or ServiceProvider.Default.
+        /// </summary>
+        /// <remarks>Name comparison is ordinal and case-sensitive; empty is treated as unnamed.</remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected T? GetLocalOrFallbackService<T>(string? name) where T : class
+        {
+            return (T?)Services.GetService(typeof(T), name, localOnly: true) ?? (T?)_fallbackServices?.GetService(typeof(T), name);
         }
 
         /// <summary>
@@ -241,32 +425,18 @@ namespace Minimal.Mvvm
         /// <returns>A task that represents the asynchronous uninitialization operation.</returns>
         protected virtual Task UninitializeAsyncCore(CancellationToken cancellationToken)
         {
-            return cancellationToken.IsCancellationRequested ? Task.FromCanceled(cancellationToken) : Task.CompletedTask;
+            if (!IsServicesCreated)
+            {
+                return cancellationToken.IsCancellationRequested ? Task.FromCanceled(cancellationToken) : Task.CompletedTask;
+            }
+            return cancellationToken.IsCancellationRequested ? Task.FromCanceled(cancellationToken)
+                : Services.CleanupAsync(static s => { (s as IDisposable)?.Dispose(); return Task.CompletedTask; }, false);
         }
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ThrowInvalidParentViewModelAssignment()
         {
-            throw new InvalidOperationException("ParentViewModel cannot be set to itself.");
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void ThrowInvalidThreadAccess()
-        {
-            throw new InvalidOperationException("The calling thread cannot access this object because a different thread owns it.");
-        }
-
-        /// <summary>
-        /// Checks if the current thread is the same as the thread on which this instance was created and throws an <see cref="InvalidOperationException"/> if not.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">Thrown when the current thread is not the same as the thread on which this instance was created.</exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void VerifyAccess()
-        {
-            if (!CheckAccess())
-            {
-                ThrowInvalidThreadAccess();
-            }
+            throw new InvalidOperationException("Cyclic parent reference detected.");
         }
 
         #endregion

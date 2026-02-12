@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);NETSDK1233</NoWarn>
+    <RootNamespace>Minimal.Mvvm.Benchmarks</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

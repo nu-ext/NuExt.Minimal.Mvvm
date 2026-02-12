@@ -1,14 +1,12 @@
-﻿using Minimal.Mvvm;
-
-namespace NuExt.Minimal.Mvvm.Tests
+﻿namespace Minimal.Mvvm.Tests
 {
-    internal class ServiceProviderTests
+    internal partial class ServiceProviderTests
     {
 
         [Test]
         public void ServiceContainerTest()
         {
-            IServiceContainer provider = new ServiceProvider();
+            var provider = new ServiceProvider();
 
             using (Assert.EnterMultipleScope())
             {
@@ -152,7 +150,11 @@ namespace NuExt.Minimal.Mvvm.Tests
         public void SetUp() => _provider = new ServiceProvider();
 
         [TearDown]
-        public void TearDown() => ServiceProvider.Default = null!;
+        public void TearDown()
+        {
+            _provider?.Dispose();
+            ServiceProvider.Default = null!;
+        }
 
         #region Basic Registration
 

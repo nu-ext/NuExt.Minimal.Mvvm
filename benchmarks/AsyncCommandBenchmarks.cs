@@ -14,9 +14,8 @@ namespace Minimal.Mvvm.Benchmarks
         [GlobalSetup]
         public void Setup()
         {
-            _command = new AsyncCommand<int>(async param =>
+            _command = new AsyncCommand<int>(async (param, token) =>
             {
-                var token = _command.CancellationTokenSource!.Token;
                 await Task.Delay(100, token);
             })
             {  AllowConcurrentExecution = true};
@@ -76,10 +75,6 @@ namespace Minimal.Mvvm.Benchmarks
             }
             catch 
             {
-            }
-            finally
-            {
-                _command.ResetCancel();
             }
         }
     }

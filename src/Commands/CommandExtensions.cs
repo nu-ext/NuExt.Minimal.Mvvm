@@ -2,14 +2,28 @@
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 
 namespace Minimal.Mvvm
 {
     /// <summary>
     /// Provides extension methods for handling asynchronous commands.
     /// </summary>
-    public static class AsyncCommandExtensions
+    public static class CommandExtensions
     {
+        /// <summary>
+        /// Notifies that the <see cref="ICommand.CanExecute"/> property has changed.
+        /// </summary>
+        public static void NotifyCanExecuteChanged(this IRelayCommand command)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(command);
+#else
+            _ = command ?? throw new ArgumentNullException(nameof(command));
+#endif
+            command.RaiseCanExecuteChanged();
+        }
+
         /// <summary>
         /// Waits asynchronously until the specified command has finished executing.
         /// </summary>
@@ -25,7 +39,7 @@ namespace Minimal.Mvvm
 #else
             _ = command ?? throw new ArgumentNullException(nameof(command));
 #endif
-            if (command.IsExecuting == false || command is not INotifyPropertyChanged npc)
+            if (command is not INotifyPropertyChanged npc || command.IsExecuting == false)
             {
                 return;
             }
@@ -51,7 +65,12 @@ namespace Minimal.Mvvm
                 }
 
                 using (cancellationToken.CanBeCanceled
-                           ? cancellationToken.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false)
+                           ? cancellationToken
+#if NET
+                           .UnsafeRegister(static state => ((TaskCompletionSource<bool>)state!).TrySetCanceled(), tcs)
+#else
+                           .Register(static state => ((TaskCompletionSource<bool>)state!).TrySetCanceled(), tcs, useSynchronizationContext: false)
+#endif
                            : null as IDisposable)
                 {
                     await tcs.Task.ConfigureAwait(false);

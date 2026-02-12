@@ -1,6 +1,6 @@
 ﻿using Minimal.Mvvm;
 
-namespace NuExt.Minimal.Mvvm.Tests
+namespace Minimal.Mvvm.Tests
 {
     internal class ViewModelBaseTests
     {
@@ -22,69 +22,69 @@ namespace NuExt.Minimal.Mvvm.Tests
             await vm.InitializeAsync();
 
             var services = vm.Services.GetServices(typeof(MyServiceBase));
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(services, Is.Not.Null);
-                Assert.That(services.Count(), Is.EqualTo(4));
-            });
+                Assert.That(services.Count(), Is.EqualTo(3));
+            }
 
             var service = vm.Services.GetService<MyServiceBase>();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(service, Is.Not.Null);
                 Assert.That(service!.Data, Is.EqualTo("Current"));
-            });
+            }
             service = vm.GetService<MyServiceBase>();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(service, Is.Not.Null);
                 Assert.That(service!.Data, Is.EqualTo("Current"));
-            });
+            }
 
             vm.Services.UnregisterService<MyServiceBase>();
 
             service = vm.Services.GetService<MyServiceBase>();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(service, Is.Not.Null);
                 Assert.That(service!.Data, Is.EqualTo("Derived"));
-            });
+            }
             service = vm.GetService<MyServiceBase>();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(service, Is.Not.Null);
                 Assert.That(service!.Data, Is.EqualTo("Derived"));
-            });
+            }
             vm.Services.UnregisterService<MyDerivedService>();
 
             service = vm.Services.GetService<MyServiceBase>();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(service, Is.Not.Null);
                 Assert.That(service!.Data, Is.EqualTo("Parent"));
-            });
+            }
             service = vm.GetService<MyServiceBase>();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(service, Is.Not.Null);
                 Assert.That(service!.Data, Is.EqualTo("Parent"));
-            });
+            }
 
             parentVm.Services.UnregisterService<MyServiceBase>();
 
             service = vm.Services.GetService<MyServiceBase>();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(service, Is.Not.Null);
                 Assert.That(service!.Data, Is.EqualTo("Default"));
-            });
+            }
 
             service = vm.GetService<MyServiceBase>();
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(service, Is.Not.Null);
                 Assert.That(service!.Data, Is.EqualTo("Default"));
-            });
+            }
 
             await vm.UninitializeAsync();
             await parentVm.UninitializeAsync();
@@ -100,22 +100,13 @@ namespace NuExt.Minimal.Mvvm.Tests
 
         }
 
-        internal class MyServiceBase
+        internal class MyServiceBase(string data)
         {
-            public MyServiceBase(string data)
-            {
-                Data = data;
-            }
-
-            public string Data { get; set; }
+            public string Data { get; set; } = data;
         }
 
-        internal class MyDerivedService : MyServiceBase
+        internal class MyDerivedService(string data) : MyServiceBase(data)
         {
-            public MyDerivedService(string data) : base(data)
-            {
-
-            }
         }
     }
 }

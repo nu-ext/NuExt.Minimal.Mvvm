@@ -3,23 +3,23 @@
 namespace Minimal.Mvvm
 {
     /// <summary>
-    /// Defines a command that can notify changes in its ability to execute.
+    /// Extends <see cref="ICommand"/> with execution state tracking and explicit change notification.
     /// </summary>
     public interface IRelayCommand : ICommand
     {
         /// <summary>
-        /// Gets or sets a value indicating whether concurrent execution of the command is allowed.
+        /// Gets a value indicating whether an execution of the command is in progress.
         /// </summary>
-        bool AllowConcurrentExecution { get; set; }
-
-        /// <summary>
-        /// Gets a value indicating whether the command is currently executing.
-        /// </summary>
+        /// <value><see langword="true"/> if the command is executing; otherwise, <see langword="false"/>.</value>
         bool IsExecuting { get; }
 
         /// <summary>
         /// Raises the <see cref="ICommand.CanExecuteChanged"/> event.
         /// </summary>
+        /// <remarks>
+        /// Call this method when conditions affecting the command's ability to execute change.
+        /// This typically causes UI elements bound to the command to requery <see cref="ICommand.CanExecute"/>.
+        /// </remarks>
         void RaiseCanExecuteChanged();
     }
 }
