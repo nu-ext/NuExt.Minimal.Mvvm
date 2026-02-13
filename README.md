@@ -1,6 +1,11 @@
 # NuExt.Minimal.Mvvm
 
-`NuExt.Minimal.Mvvm` is a **high-performance, dependency-free** MVVM framework for .NET focused on **robust async flows**, **deterministic command execution**, and a **clear, minimal API**.
+`NuExt.Minimal.Mvvm` is a **high-performance, dependency-free** MVVM core for .NET focused on **robust async flows** and **deterministic command execution**. It provides a **clear, minimal API** with Bindable/ViewModel base types, a self-validating command model (Relay/Async/Composite), and a lightweight service provider.
+
+[![NuGet](https://img.shields.io/nuget/v/NuExt.Minimal.Mvvm.svg)](https://www.nuget.org/packages/NuExt.Minimal.Mvvm)
+[![Build](https://github.com/IvanGit/NuExt.Minimal.Mvvm/actions/workflows/ci.yml/badge.svg)](https://github.com/IvanGit/NuExt.Minimal.Mvvm/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/IvanGit/NuExt.Minimal.Mvvm?label=license)](https://github.com/IvanGit/NuExt.Minimal.Mvvm/blob/main/LICENSE)
+[![Downloads](https://img.shields.io/nuget/dt/NuExt.Minimal.Mvvm.svg)](https://www.nuget.org/packages/NuExt.Minimal.Mvvm)
 
 ## Features
 
