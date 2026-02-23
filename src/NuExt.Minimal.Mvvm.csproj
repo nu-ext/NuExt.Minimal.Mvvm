@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release' or '$(Configuration)' == 'Sources'">true</GeneratePackageOnBuild>
-    <PackageTags>nuext;minimal;mvvm;view;viewmodel;model;ui;di;command;relaycommand;asynccommand;multiple;concurrent;async;servicecontainer;weakevent</PackageTags>
+    <PackageTags>nuext;minimal;mvvm;view;viewmodel;model;ui;di;command;relaycommand;asynccommand;asyncvaluecommand;multiple;concurrent;async;servicecontainer;weakevent</PackageTags>
     <Description>NuExt.Minimal.Mvvm is an MVVM framework that offers a minimal set of components necessary to get started with the Model-View-ViewModel (MVVM) pattern.
 
 Commonly Used Types:
@@ -14,18 +14,21 @@ Minimal.Mvvm.ViewModelBase
 Minimal.Mvvm.ServiceProvider
 Minimal.Mvvm.AsyncCommand
 Minimal.Mvvm.AsyncCommand&lt;T&gt;
+Minimal.Mvvm.AsyncValueCommand
+Minimal.Mvvm.AsyncValueCommand&lt;T&gt;
 Minimal.Mvvm.RelayCommand
 Minimal.Mvvm.RelayCommand&lt;T&gt;
 Minimal.Mvvm.CompositeCommand
 Minimal.Mvvm.WeakEvent</Description>
-    <Version>0.7.0</Version>
+    <Version>0.7.1</Version>
     <RootNamespace>Minimal.Mvvm</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591;NETSDK1233</NoWarn>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageIcon>logo128.png</PackageIcon>
-    <PackageProjectUrl>https://github.com/IvanGit/NuExt.Minimal.Mvvm</PackageProjectUrl>
+    <PackageIcon>logo.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/nu-ext/NuExt.Minimal.Mvvm</PackageProjectUrl>
     <Configurations>Debug;Release;Sources</Configurations>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj-legacy\**;bin-legacy\**;README-Legacy.md</DefaultItemExcludes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Sources'">
@@ -44,6 +47,9 @@ Minimal.Mvvm.WeakEvent</Description>
   <ItemGroup Condition="'$(IncludeSource)' == 'true'">
     <Content Include="**\*.cs" Pack="true" PackagePath="contentFiles/cs/any/Minimal.Mvvm" BuildAction="Compile" />
     <Content Remove="obj\**" />
+    <Content Remove="obj-legacy\**" />
+    <Content Remove="bin\**" />
+    <Content Remove="bin-legacy\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -51,8 +57,8 @@ Minimal.Mvvm.WeakEvent</Description>
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\logo128.png" Pack="true" PackagePath="\" />
-    <None Include=".\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\logo.png" Pack="true" PackagePath="\" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <Target Name="PostPack" AfterTargets="Pack" Condition="'$(Configuration)' == 'Sources'">

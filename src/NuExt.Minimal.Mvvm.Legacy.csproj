@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net462</TargetFrameworks>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release'">true</GeneratePackageOnBuild>
+		<PackageTags>nuext;minimal;mvvm;legacy-only;backport;command;relaycommand;asynccommand;asyncvaluecommand;multiple;concurrent;async;net462;netstandard2.0</PackageTags>
+		<Description>Legacy-only add-on for NuExt.Minimal.Mvvm (net462/netstandard2.0). Provides backports (e.g., AsyncValueCommand). Not deprecated; NOT for modern .NET.</Description>
+		<Version>0.7.1</Version>
+		<RootNamespace>Minimal.Mvvm</RootNamespace>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);1591;NETSDK1233</NoWarn>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageIcon>logo.png</PackageIcon>
+		<PackageProjectUrl>https://github.com/nu-ext/NuExt.Minimal.Mvvm</PackageProjectUrl>
+		<EnableDefaultItems>false</EnableDefaultItems>
+		<DefineConstants>$(DefineConstants);NUEXT_ENABLE_VALUETASK</DefineConstants>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="NuExt.Minimal.Mvvm.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Include="AssemblyInfo.cs" />
+		<Compile Include="Commands\AsyncValueCommand.cs" />
+		<Compile Include="Commands\AsyncValueCommand`1.cs" />
+		<Compile Include="GlobalSuppressions.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\logo.png" Pack="true" PackagePath="\" />
+		<None Include=".\README-Legacy.md" Pack="true" PackagePath="README.md" />
+	</ItemGroup>
+
+</Project>

@@ -9,6 +9,10 @@
     <Build Solution="Sources|*" Project="false" />
   </Project>
   <Project Path="src/NuExt.Minimal.Mvvm.csproj" />
+  <Project Path="src/NuExt.Minimal.Mvvm.Legacy.csproj">
+    <BuildType Solution="Sources|*" Project="Release" />
+    <Build Solution="Sources|*" Project="false" />
+  </Project>
   <Project Path="tests/NuExt.Minimal.Mvvm.Tests.csproj">
     <BuildType Solution="Sources|*" Project="Release" />
     <Build Solution="Sources|*" Project="false" />

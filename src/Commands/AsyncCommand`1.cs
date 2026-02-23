@@ -86,9 +86,9 @@ namespace Minimal.Mvvm
         }
 
         ///<inheritdoc/>
-        protected override async Task ExecuteAsyncCore(T parameter, CancellationToken cancellationToken)
+        protected override Task ExecuteAsyncCore(T parameter, CancellationToken cancellationToken)
         {
-            await _execute(parameter, cancellationToken).ConfigureAwait(false);
+            return _execute(parameter, cancellationToken);
         }
 
         #endregion

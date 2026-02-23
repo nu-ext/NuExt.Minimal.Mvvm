@@ -1,4 +1,6 @@
-﻿namespace Minimal.Mvvm.Tests
+﻿using System.ComponentModel;
+
+namespace Minimal.Mvvm.Tests
 {
     [TestFixture]
     [Parallelizable(ParallelScope.All)]
@@ -234,7 +236,7 @@
             Assert.That(executed, Is.True);
         }
 
-        [Test]
+        [Test, Apartment(ApartmentState.STA)]
         public async Task ContinueOnCapturedContext_False_DoesNotCaptureContext()
         {
             SynchronizationContext? context = null;
@@ -242,20 +244,28 @@
             var command = new AsyncCommand<int>(async (param, ct) =>
             {
                 await Task.Delay(1, ct);
-                context = SynchronizationContext.Current;
             })
             {
                 ContinueOnCapturedContext = false
             };
 
+            (command as INotifyPropertyChanged).PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(IAsyncCommand.IsExecuting)
+                    && command.IsExecuting == false)
+                {
+                    context = SynchronizationContext.Current;
+                }
+            };
+
             // Act
-            await command.ExecuteAsync(42);
+            await command.ExecuteAsync(42).ConfigureAwait(false);
 
             // Assert
             Assert.That(context, Is.Null);
         }
 
-        [Test]
+        [Test, Apartment(ApartmentState.STA)]
         public async Task ContinueOnCapturedContext_True_CapturesContextWhenAvailable()
         {
             // Arrange
@@ -264,14 +274,22 @@
             var command = new AsyncCommand<int>(async (param, ct) =>
             {
                 await Task.Delay(1, ct);
-                result = SynchronizationContext.Current;
             })
             {
                 ContinueOnCapturedContext = true
             };
 
+            (command as INotifyPropertyChanged).PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(IAsyncCommand.IsExecuting)
+                    && command.IsExecuting == false)
+                {
+                    result = SynchronizationContext.Current;
+                }
+            };
+
             // Act
-            await command.ExecuteAsync(42);
+            await command.ExecuteAsync(42).ConfigureAwait(false);
 
             // Assert
             Assert.That(result, Is.EqualTo(context));

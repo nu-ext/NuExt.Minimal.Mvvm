@@ -33,4 +33,12 @@
     <UseNuExtPackages>true</UseNuExtPackages>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$([System.String]::Copy('$(MSBuildProjectName)').ToUpperInvariant().EndsWith('LEGACY'))">
+    <MSBuildProjectExtensionsPath>obj-legacy\</MSBuildProjectExtensionsPath>
+    <RestoreOutputPath>obj-legacy\</RestoreOutputPath>
+    <BaseIntermediateOutputPath>obj-legacy\</BaseIntermediateOutputPath>
+    <IntermediateOutputPath>obj-legacy\$(Configuration)\</IntermediateOutputPath>
+    <OutputPath>bin-legacy\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+
 </Project>
