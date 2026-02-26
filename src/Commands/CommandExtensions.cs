@@ -66,7 +66,7 @@ namespace Minimal.Mvvm
 
                 using (cancellationToken.CanBeCanceled
                            ? cancellationToken
-#if NET
+#if NET5_0_OR_GREATER
                            .UnsafeRegister(static state => ((TaskCompletionSource<bool>)state!).TrySetCanceled(), tcs)
 #else
                            .Register(static state => ((TaskCompletionSource<bool>)state!).TrySetCanceled(), tcs, useSynchronizationContext: false)

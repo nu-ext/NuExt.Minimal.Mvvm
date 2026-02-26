@@ -8,6 +8,8 @@ namespace Minimal.Mvvm
     /// </summary>
     public static class ServiceContainerExtensions
     {
+        #region Resolving
+
         /// <summary>
         /// Gets a service object of type <typeparamref name="TService"/>.
         /// </summary>
@@ -156,7 +158,9 @@ namespace Minimal.Mvvm
         /// Thrown when a registered service cannot be cast to <typeparamref name="TService"/>.
         /// This indicates a configuration error where a service was registered under an incompatible type.
         /// </exception>
-        /// <remarks>Enumeration is lazy and may trigger service activation; parent provider results may be included.</remarks>
+        /// <remarks>
+        /// Enumeration is lazy and may trigger service activation.
+        /// </remarks>
         public static IEnumerable<TService> GetLocalServices<TService>(this IServiceContainer container)
             where TService : class
         {
@@ -171,6 +175,10 @@ namespace Minimal.Mvvm
             }
         }
 
+        #endregion
+
+        #region Scope
+
         /// <summary>
         /// Registers a service instance under the specified type <typeparamref name="TService"/>.
         /// </summary>
@@ -179,7 +187,8 @@ namespace Minimal.Mvvm
         /// <param name="service">The service instance to register.</param>
         /// <param name="throwIfExists">Specifies whether to throw an exception if the service already exists.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="container"/> is null.</exception>
-        public static void RegisterService<TService>(this IServiceContainer container, TService service, bool throwIfExists = false) where TService : class
+        public static void RegisterService<TService>(this IServiceContainer container, TService service, bool throwIfExists = false)
+            where TService : class
         {
 #if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(container);
@@ -200,7 +209,8 @@ namespace Minimal.Mvvm
         /// </param>
         /// <param name="throwIfExists">Specifies whether to throw an exception if the service already exists.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="container"/> is null.</exception>
-        public static void RegisterService<TService>(this IServiceContainer container, TService service, string? name, bool throwIfExists = false) where TService : class
+        public static void RegisterService<TService>(this IServiceContainer container, TService service, string? name, bool throwIfExists = false)
+            where TService : class
         {
 #if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(container);
@@ -218,7 +228,8 @@ namespace Minimal.Mvvm
         /// <param name="callback">The factory function to create the service instance.</param>
         /// <param name="throwIfExists">Specifies whether to throw an exception if the service already exists.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="container"/> or <paramref name="callback"/> is null.</exception>
-        public static void RegisterService<TService>(this IServiceContainer container, Func<TService> callback, bool throwIfExists = false) where TService : class
+        public static void RegisterService<TService>(this IServiceContainer container, Func<TService> callback, bool throwIfExists = false)
+            where TService : class
         {
 #if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(container);
@@ -241,7 +252,8 @@ namespace Minimal.Mvvm
         /// </param>
         /// <param name="throwIfExists">Specifies whether to throw an exception if the service already exists.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="container"/> or <paramref name="callback"/> is null.</exception>
-        public static void RegisterService<TService>(this IServiceContainer container, Func<TService> callback, string? name, bool throwIfExists = false) where TService : class
+        public static void RegisterService<TService>(this IServiceContainer container, Func<TService> callback, string? name, bool throwIfExists = false)
+            where TService : class
         {
 #if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(container);
@@ -309,7 +321,8 @@ namespace Minimal.Mvvm
         /// <param name="container">The service container.</param>
         /// <param name="throwIfExists">Specifies whether to throw an exception if the service already exists.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="container"/> is null.</exception>
-        public static void RegisterService<TService>(this IServiceContainer container, bool throwIfExists = false) where TService : class
+        public static void RegisterService<TService>(this IServiceContainer container, bool throwIfExists = false)
+            where TService : class
         {
 #if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(container);
@@ -329,7 +342,8 @@ namespace Minimal.Mvvm
         /// </param>
         /// <param name="throwIfExists">Specifies whether to throw an exception if the service already exists.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="container"/> is null.</exception>
-        public static void RegisterService<TService>(this IServiceContainer container, string? name, bool throwIfExists = false) where TService : class
+        public static void RegisterService<TService>(this IServiceContainer container, string? name, bool throwIfExists = false)
+            where TService : class
         {
 #if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(container);
@@ -418,5 +432,211 @@ namespace Minimal.Mvvm
 #endif
             return container.UnregisterService(serviceType: typeof(TService), name: name);
         }
+
+        #endregion
+
+        #region Transient
+
+        /// <summary>
+        /// Registers a transient factory under the specified type <typeparamref name="TService"/>.
+        /// A new instance is created on each resolution; no instance is cached by the container.
+        /// </summary>
+        /// <typeparam name="TService">The service type to register.</typeparam>
+        /// <param name="container">The service container.</param>
+        /// <param name="callback">The factory that produces a new instance on each call.</param>
+        /// <param name="throwIfExists">Whether to throw if a registration with the same key already exists.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="container"/> or <paramref name="callback"/> is null.
+        /// </exception>
+        public static void RegisterTransient<TService>(this IServiceContainer container, Func<TService> callback, bool throwIfExists = false)
+            where TService : class
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(container);
+            ArgumentNullException.ThrowIfNull(callback);
+#else
+            _ = container ?? throw new ArgumentNullException(nameof(container));
+            _ = callback ?? throw new ArgumentNullException(nameof(callback));
+#endif
+            container.RegisterTransient(serviceType: typeof(TService), callback: callback, name: null, throwIfExists);
+        }
+
+        /// <summary>
+        /// Registers a named transient factory under the specified type <typeparamref name="TService"/>.
+        /// A new instance is created on each resolution; no instance is cached by the container.
+        /// </summary>
+        /// <typeparam name="TService">The service type to register.</typeparam>
+        /// <param name="container">The service container.</param>
+        /// <param name="callback">The factory that produces a new instance on each call.</param>
+        /// <param name="name">
+        /// The registration name. <see langword="null"/> or empty selects unnamed registrations. Name comparison is ordinal and case-sensitive.
+        /// </param>
+        /// <param name="throwIfExists">Whether to throw if a registration with the same key already exists.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="container"/> or <paramref name="callback"/> is null.
+        /// </exception>
+        public static void RegisterTransient<TService>(this IServiceContainer container, Func<TService> callback, string? name, bool throwIfExists = false)
+            where TService : class
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(container);
+            ArgumentNullException.ThrowIfNull(callback);
+#else
+            _ = container ?? throw new ArgumentNullException(nameof(container));
+            _ = callback ?? throw new ArgumentNullException(nameof(callback));
+#endif
+            container.RegisterTransient(serviceType: typeof(TService), callback: callback, name: name, throwIfExists);
+        }
+
+        /// <summary>
+        /// Registers a transient factory where the implementation type differs from the registration type.
+        /// A new instance is created on each resolution; no instance is cached by the container.
+        /// </summary>
+        /// <typeparam name="TService">The registration (service) type.</typeparam>
+        /// <typeparam name="TImplementation">The concrete implementation type produced by the factory.</typeparam>
+        /// <param name="container">The service container.</param>
+        /// <param name="callback">The factory producing a new implementation instance on each call.</param>
+        /// <param name="throwIfExists">Whether to throw if a registration with the same key already exists.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="container"/> or <paramref name="callback"/> is null.
+        /// </exception>
+        public static void RegisterTransient<TService, TImplementation>(this IServiceContainer container, Func<TImplementation> callback, bool throwIfExists = false)
+            where TService : class
+            where TImplementation : class, TService
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(container);
+            ArgumentNullException.ThrowIfNull(callback);
+#else
+            _ = container ?? throw new ArgumentNullException(nameof(container));
+            _ = callback ?? throw new ArgumentNullException(nameof(callback));
+#endif
+            container.RegisterTransient(serviceType: typeof(TService), implementationType: typeof(TImplementation), callback: callback, name: null, throwIfExists);
+        }
+
+        /// <summary>
+        /// Registers a named transient factory where the implementation type differs from the registration type.
+        /// A new instance is created on each resolution; no instance is cached by the container.
+        /// </summary>
+        /// <typeparam name="TService">The registration (service) type.</typeparam>
+        /// <typeparam name="TImplementation">The concrete implementation type produced by the factory.</typeparam>
+        /// <param name="container">The service container.</param>
+        /// <param name="callback">The factory producing a new implementation instance on each call.</param>
+        /// <param name="name">
+        /// The registration name. <see langword="null"/> or empty selects unnamed registrations. Name comparison is ordinal and case-sensitive.
+        /// </param>
+        /// <param name="throwIfExists">Whether to throw if a registration with the same key already exists.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="container"/> or <paramref name="callback"/> is null.
+        /// </exception>
+        public static void RegisterTransient<TService, TImplementation>(this IServiceContainer container, Func<TImplementation> callback, string? name, bool throwIfExists = false)
+            where TService : class
+            where TImplementation : class, TService
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(container);
+            ArgumentNullException.ThrowIfNull(callback);
+#else
+            _ = container ?? throw new ArgumentNullException(nameof(container));
+            _ = callback ?? throw new ArgumentNullException(nameof(callback));
+#endif
+            container.RegisterTransient(serviceType: typeof(TService), implementationType: typeof(TImplementation), callback: callback, name: name, throwIfExists);
+        }
+
+        /// <summary>
+        /// Registers a transient constructor activation under the specified type <typeparamref name="TService"/>.
+        /// A new instance is created via the public parameterless constructor on each resolution; no instance is cached.
+        /// </summary>
+        /// <typeparam name="TService">The service type to register.</typeparam>
+        /// <param name="container">The service container.</param>
+        /// <param name="throwIfExists">Whether to throw if a registration with the same key already exists.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="container"/> is null.
+        /// </exception>
+        public static void RegisterTransient<TService>(this IServiceContainer container, bool throwIfExists = false)
+            where TService : class
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(container);
+#else
+            _ = container ?? throw new ArgumentNullException(nameof(container));
+#endif
+            container.RegisterTransient(serviceType: typeof(TService), name: null, throwIfExists);
+        }
+
+        /// <summary>
+        /// Registers a named transient constructor activation under the specified type <typeparamref name="TService"/>.
+        /// A new instance is created via the public parameterless constructor on each resolution; no instance is cached.
+        /// </summary>
+        /// <typeparam name="TService">The service type to register.</typeparam>
+        /// <param name="container">The service container.</param>
+        /// <param name="name">
+        /// The registration name. <see langword="null"/> or empty selects unnamed registrations. Name comparison is ordinal and case-sensitive.
+        /// </param>
+        /// <param name="throwIfExists">Whether to throw if a registration with the same key already exists.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="container"/> is null.
+        /// </exception>
+        public static void RegisterTransient<TService>(this IServiceContainer container, string? name, bool throwIfExists = false)
+            where TService : class
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(container);
+#else
+            _ = container ?? throw new ArgumentNullException(nameof(container));
+#endif
+            container.RegisterTransient(serviceType: typeof(TService), name: name, throwIfExists);
+        }
+
+        /// <summary>
+        /// Registers a transient constructor activation where the implementation type differs from the registration type.
+        /// A new instance is created via the implementation's public parameterless constructor on each resolution; no instance is cached.
+        /// </summary>
+        /// <typeparam name="TService">The registration (service) type.</typeparam>
+        /// <typeparam name="TImplementation">The concrete implementation type to instantiate.</typeparam>
+        /// <param name="container">The service container.</param>
+        /// <param name="throwIfExists">Whether to throw if a registration with the same key already exists.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="container"/> is null.
+        /// </exception>
+        public static void RegisterTransient<TService, TImplementation>(this IServiceContainer container, bool throwIfExists = false)
+            where TService : class
+            where TImplementation : class, TService
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(container);
+#else
+            _ = container ?? throw new ArgumentNullException(nameof(container));
+#endif
+            container.RegisterTransient(serviceType: typeof(TService), implementationType: typeof(TImplementation), name: null, throwIfExists);
+        }
+
+        /// <summary>
+        /// Registers a named transient constructor activation where the implementation type differs from the registration type.
+        /// A new instance is created via the implementation's public parameterless constructor on each resolution; no instance is cached.
+        /// </summary>
+        /// <typeparam name="TService">The registration (service) type.</typeparam>
+        /// <typeparam name="TImplementation">The concrete implementation type to instantiate.</typeparam>
+        /// <param name="container">The service container.</param>
+        /// <param name="name">
+        /// The registration name. <see langword="null"/> or empty selects unnamed registrations. Name comparison is ordinal and case-sensitive.
+        /// </param>
+        /// <param name="throwIfExists">Whether to throw if a registration with the same key already exists.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="container"/> is null.
+        /// </exception>
+        public static void RegisterTransient<TService, TImplementation>(this IServiceContainer container, string? name, bool throwIfExists = false)
+            where TService : class
+            where TImplementation : class, TService
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(container);
+#else
+            _ = container ?? throw new ArgumentNullException(nameof(container));
+#endif
+            container.RegisterTransient(serviceType: typeof(TService), implementationType: typeof(TImplementation), name: name, throwIfExists);
+        }
+
+        #endregion
     }
 }

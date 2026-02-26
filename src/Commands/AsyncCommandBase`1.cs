@@ -89,7 +89,8 @@ namespace Minimal.Mvvm
         /// <para>For proper exception handling and cancellation support, use 
         /// <see cref="ExecuteAsync(T, CancellationToken)"/> instead.</para>
         /// <para>Exceptions thrown during execution that are not <see cref="OperationCanceledException"/>
-        /// are raised via the <see cref="UnhandledException"/> event.</para>
+        /// are raised via the <see cref="UnhandledException"/> event; if not handled there, they are forwarded to 
+        /// <see cref="AsyncCommand.GlobalUnhandledException"/>.</para>
         /// </remarks>
         public override async void Execute(T parameter)
         {
@@ -144,10 +145,6 @@ namespace Minimal.Mvvm
             {
                 await ExecuteAsyncCore(parameter, cts.Token).ConfigureAwait(ContinueOnCapturedContext);
             }
-            catch (OperationCanceledException ex) when (ex.CancellationToken == cts.Token)
-            {
-                throw;
-            }
             finally
             {
                 cancelable.Source = null;
@@ -199,19 +196,32 @@ namespace Minimal.Mvvm
         private void OnUnhandledException(Exception exception)
         {
             UnhandledCommandExceptionEventArgs? args = null;
-            var handler = UnhandledException;
-            if (handler != null)
+            try
             {
-                args = new UnhandledCommandExceptionEventArgs(exception);
-                handler.Invoke(this, args);
-                if (args.Handled) return;
+                var handler = UnhandledException;
+                if (handler != null)
+                {
+                    args = new UnhandledCommandExceptionEventArgs(exception);
+                    try
+                    {
+                        handler.Invoke(this, args);
+                        if (args.Handled) return;
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.WriteLine(ex.ToString());
+                    }
+                }
+
+                AsyncCommand.OnUnhandledException(this, exception, ref args);
             }
-
-            AsyncCommand.OnUnhandledException(this, exception, ref args);
-
-            if (args?.Handled != true)
+            finally
             {
-                Trace.WriteLine($"An Unhandled Exception has occurred in {GetType().Name}:{Environment.NewLine}{exception.Message}");
+                if (args?.Handled != true)
+                {
+                    Trace.WriteLine(
+                        $"An Unhandled Exception has occurred in {GetType().Name}:{Environment.NewLine}{exception}");
+                }
             }
         }
 

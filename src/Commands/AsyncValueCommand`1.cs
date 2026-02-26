@@ -106,7 +106,7 @@ namespace Minimal.Mvvm
         }
 
         ///<inheritdoc/>
-        protected override async Task ExecuteAsyncCore(T parameter, CancellationToken cancellationToken)
+        protected override Task ExecuteAsyncCore(T parameter, CancellationToken cancellationToken)
         {
             ValueTask valueTask = _execute(parameter, cancellationToken);
 
@@ -114,9 +114,14 @@ namespace Minimal.Mvvm
             {
                 // Ensure proper consumption of the ValueTask, including potential IValueTaskSource resources.
                 valueTask.GetAwaiter().GetResult();
-                return;
+                return Task.CompletedTask;// do not return canceled: the operation has completed successfully
             }
 
+            return AwaitAsync(valueTask);
+        }
+
+        private static async Task AwaitAsync(ValueTask valueTask)
+        {
             await valueTask.ConfigureAwait(false);
         }
 

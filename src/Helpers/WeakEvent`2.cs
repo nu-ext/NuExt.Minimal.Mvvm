@@ -131,19 +131,24 @@ namespace Minimal.Mvvm
 #endif
             }
             bool hasDead = false;
-
-            for (var i = 0; i < count; i++)
+            try
             {
-                if (!snapshot[i].TryInvoke(sender, args))
+                for (var i = 0; i < count; i++)
                 {
-                    hasDead = true;
+                    if (!snapshot[i].TryInvoke(sender, args))
+                    {
+                        hasDead = true;
+                    }
                 }
             }
-
+            finally
+            {
 #if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-            System.Buffers.ArrayPool<WeakHandler>.Shared.Return(snapshot);
+                System.Buffers.ArrayPool<WeakHandler>.Shared.Return(snapshot, clearArray: true);
 #endif
-            if (hasDead) return;
+            }
+
+            if (!hasDead) return;
 
             lock (_handlers)
             {
@@ -158,8 +163,8 @@ namespace Minimal.Mvvm
         }
 
         // IMPORTANT:
-        // We intentionally use ConditionalWeakTable instead of ConcurrentDictionary.Reason: keys must NOT keep strong roots
-        // to MethodInfo/assembly metadata, otherwiselong-lived static caches will prevent collectible AssemblyLoadContexts
+        // We intentionally use ConditionalWeakTable instead of ConcurrentDictionary. Reason: keys must NOT keep strong roots
+        // to MethodInfo/assembly metadata, otherwise long-lived static caches will prevent collectible AssemblyLoadContexts
         // (or dynamic assemblies) from being unloaded.
         private static readonly ConditionalWeakTable<MethodInfo, Action<object?, object?, TEventArgs>> s_invokers = new();
 
@@ -169,8 +174,8 @@ namespace Minimal.Mvvm
         private static Action<object?, object?, TEventArgs> CompileOpenInvoker(MethodInfo method)
         {
             var parameters = method.GetParameters();
-            if (method.ReturnType != typeof(void) || parameters.Length != 2 
-                || parameters[0].ParameterType != typeof(object) 
+            if (method.ReturnType != typeof(void) || parameters.Length != 2
+                || parameters[0].ParameterType != typeof(object)
                 || !parameters[1].ParameterType.IsAssignableFrom(typeof(TEventArgs)))
                 throw new InvalidOperationException($"Handler method must be (object sender, {typeof(TEventArgs).Name} args).");
 

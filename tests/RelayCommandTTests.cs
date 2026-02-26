@@ -90,7 +90,7 @@ namespace Minimal.Mvvm.Tests
             var command = new RelayCommand<int>(_ =>
             {
                 Interlocked.Increment(ref executionCount);
-                Thread.Sleep(200);
+                Thread.Sleep(500);
             });
 
             var task1 = Task.Run(() => command.Execute(1));

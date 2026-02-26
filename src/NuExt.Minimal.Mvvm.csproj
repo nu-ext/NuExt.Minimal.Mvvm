@@ -6,21 +6,8 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release' or '$(Configuration)' == 'Sources'">true</GeneratePackageOnBuild>
     <PackageTags>nuext;minimal;mvvm;view;viewmodel;model;ui;di;command;relaycommand;asynccommand;asyncvaluecommand;multiple;concurrent;async;servicecontainer;weakevent</PackageTags>
-    <Description>NuExt.Minimal.Mvvm is an MVVM framework that offers a minimal set of components necessary to get started with the Model-View-ViewModel (MVVM) pattern.
-
-Commonly Used Types:
-Minimal.Mvvm.BindableBase
-Minimal.Mvvm.ViewModelBase
-Minimal.Mvvm.ServiceProvider
-Minimal.Mvvm.AsyncCommand
-Minimal.Mvvm.AsyncCommand&lt;T&gt;
-Minimal.Mvvm.AsyncValueCommand
-Minimal.Mvvm.AsyncValueCommand&lt;T&gt;
-Minimal.Mvvm.RelayCommand
-Minimal.Mvvm.RelayCommand&lt;T&gt;
-Minimal.Mvvm.CompositeCommand
-Minimal.Mvvm.WeakEvent</Description>
-    <Version>0.7.1</Version>
+    <Description>A minimal, high‑performance MVVM core for .NET with deterministic async command model, lightweight ViewModel base classes, and a small hierarchical service provider designed for UI applications.</Description>
+    <Version>0.7.2</Version>
     <RootNamespace>Minimal.Mvvm</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591;NETSDK1233</NoWarn>

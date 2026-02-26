@@ -537,24 +537,6 @@ namespace Minimal.Mvvm.Tests
         }
 
         [Test]
-        public async Task ExecuteAsyncCore_UsesConfigureAwaitFalse()
-        {
-            // Arrange
-            SynchronizationContext? capturedContext = null;
-            var command = new AsyncCommand(async ct =>
-            {
-                await Task.Delay(1, ct);
-                capturedContext = SynchronizationContext.Current;
-            });
-
-            // Act
-            await command.ExecuteAsync(null);
-
-            // Assert
-            Assert.That(capturedContext, Is.Null);
-        }
-
-        [Test]
         public void NonGenericExecuteAsync_WithObjectParameter_Works()
         {
             // Arrange

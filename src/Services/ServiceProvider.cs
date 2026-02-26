@@ -52,7 +52,7 @@ namespace Minimal.Mvvm
                 private Func<object>? _factory;
                 private object? _syncLock;
                 private object? _value;
-                private long _order;
+                private long _order;//creation order
 
                 public Lazy(ServiceProvider owner, object value)
                 {
@@ -90,8 +90,7 @@ namespace Minimal.Mvvm
                             Interlocked.CompareExchange(ref _order, owner.NextOrder(), current);
                         }
 
-                        // we ensure that _factory when finished is set to null to allow garbage collector to clean up
-                        // any referenced items
+                        // clear references to allow GC of captured state
                         _owner = null;
                         _factory = null;
                         _syncLock = null;
@@ -150,7 +149,12 @@ namespace Minimal.Mvvm
         private static volatile IServiceContainer? s_custom;
 
         private readonly ConcurrentDictionary<ServiceKey, ServiceValue> _services = new();
+        private readonly ConcurrentDictionary<ServiceKey, Func<object>> _transients = new();
+
         private readonly IServiceProvider? _parentProvider;
+        private readonly Func<Type, string?, object?>? _upstreamResolve;
+        private readonly Func<Type, IEnumerable<object>>? _upstreamEnumerate;
+
         private volatile int _disposed; // 0 = false, 1 = true
         private long _orderSeq;
 
@@ -191,6 +195,19 @@ namespace Minimal.Mvvm
             _parentProvider = parentServiceProvider ?? throw new ArgumentNullException(nameof(parentServiceProvider));
         }
 
+        internal ServiceProvider(Func<Type, string?, object?> upstreamResolve, Func<Type, IEnumerable<object>> upstreamEnumerate)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(upstreamResolve);
+            ArgumentNullException.ThrowIfNull(upstreamEnumerate);
+#else
+            _ = upstreamResolve ?? throw new ArgumentNullException(nameof(upstreamResolve));
+            _ = upstreamEnumerate ?? throw new ArgumentNullException(nameof(upstreamEnumerate));
+#endif
+            _upstreamResolve = upstreamResolve;
+            _upstreamEnumerate = upstreamEnumerate;
+        }
+
         #region Properties
 
         /// <summary>
@@ -222,7 +239,14 @@ namespace Minimal.Mvvm
 
         #endregion
 
-        #region Methods
+        #region Scope Methods
+
+        /// <inheritdoc />
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public IServiceContainer CreateScope()
+        {
+            return new ServiceProvider(this);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ServiceKey CreateServiceKey(Type serviceType, string? name)
@@ -252,6 +276,24 @@ namespace Minimal.Mvvm
             Debug.Assert(stack.Count >= 1);
             stack.Pop();
         }
+
+        /// <summary>
+        /// Checks if the object has been disposed and throws an <see cref="ObjectDisposedException"/> if it has.
+        /// </summary>
+        /// <exception cref="ObjectDisposedException">
+        /// Thrown when the object is already disposed.
+        /// </exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void CheckDisposed()
+        {
+#if NET7_0_OR_GREATER
+            ObjectDisposedException.ThrowIf(_disposed == 1, this);
+#else
+            if (_disposed == 1) throw new ObjectDisposedException(GetType().FullName);
+#endif
+        }
+
+        #endregion
 
         #region Service instance creation
 
@@ -312,21 +354,7 @@ namespace Minimal.Mvvm
 
         #endregion
 
-        /// <summary>
-        /// Checks if the object has been disposed and throws an <see cref="ObjectDisposedException"/> if it has.
-        /// </summary>
-        /// <exception cref="ObjectDisposedException">
-        /// Thrown when the object is already disposed.
-        /// </exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected void CheckDisposed()
-        {
-#if NET
-            ObjectDisposedException.ThrowIf(_disposed == 1, this);
-#else
-            if (_disposed == 1) throw new ObjectDisposedException(GetType().FullName);
-#endif
-        }
+        #region Resolving
 
         /// <inheritdoc />
         public object? GetService(Type serviceType) 
@@ -366,24 +394,34 @@ namespace Minimal.Mvvm
 
             var key = CreateServiceKey(serviceType, name);
 
-            //1. exact match (type+name)
+            #region 1. exact match (type+name)
+            // service exact (type+name)
             if (_services.TryGetValue(key, out var serviceValue))
             {
                 return serviceValue.Service;//<--- service creation point
             }
 
+            // transient exact (type+name)
+            if (_transients.TryGetValue(key, out var transientFactoryExact))
+            {
+                return transientFactoryExact(); // NEW instance each time
+            }
+            #endregion
+
             //2. if named (name != null):
             if (key.Name != null)
             {
-                //2.1 local search name match & type assignment
+                #region 2.1 local search name match & type assignment
+                // service named assignable
                 foreach (var pair in _services)
                 {
                     if (key.Name != pair.Key.Name) continue;
                     if (pair.Value.IsCreated)
                     {
-                        if (serviceType.IsInstanceOfType(pair.Value.Service))
+                        var service = pair.Value.Service;
+                        if (serviceType.IsInstanceOfType(service))
                         {
-                            return pair.Value.Service;
+                            return service;
                         }
                         continue;
                     }
@@ -392,18 +430,31 @@ namespace Minimal.Mvvm
                         return pair.Value.Service;//<--- service creation point
                     }
                 }
+
+                // transient named assignable
+                foreach (var pair in _transients)
+                {
+                    if (key.Name != pair.Key.Name) continue;
+                    if (serviceType.IsAssignableFrom(pair.Key.Type))
+                    {
+                        return pair.Value();//<--- transient creation point
+                    }
+                }
+                #endregion
             }
             else //3. if unnamed (name == null):
             {
-                //3.1 local search by null name & type assignment
+                #region 3.1 local search by null name & type assignment
+                // service unnamed assignable
                 foreach (var pair in _services)
                 {
                     if (pair.Key.Name != null) continue;
                     if (pair.Value.IsCreated)
                     {
-                        if (serviceType.IsInstanceOfType(pair.Value.Service))
+                        var service = pair.Value.Service;
+                        if (serviceType.IsInstanceOfType(service))
                         {
-                            return pair.Value.Service;
+                            return service;
                         }
                         continue;
                     }
@@ -413,15 +464,28 @@ namespace Minimal.Mvvm
                     }
                 }
 
-                //3.2 local search by non-null name & type assignment
+                // transient unnamed assignable
+                foreach (var pair in _transients)
+                {
+                    if (pair.Key.Name != null) continue;
+                    if (serviceType.IsAssignableFrom(pair.Key.Type))
+                    {
+                        return pair.Value();//<--- transient creation point
+                    }
+                }
+                #endregion
+
+                #region 3.2 local search by non-null name & type assignment
+                // service named assignable (fallback within unnamed request)
                 foreach (var pair in _services)
                 {
                     if (pair.Key.Name == null) continue;
                     if (pair.Value.IsCreated)
                     {
-                        if (serviceType.IsInstanceOfType(pair.Value.Service))
+                        var service = pair.Value.Service;
+                        if (serviceType.IsInstanceOfType(service))
                         {
-                            return pair.Value.Service;
+                            return service;
                         }
                         continue;
                     }
@@ -431,12 +495,41 @@ namespace Minimal.Mvvm
                     }
                 }
 
+                // transient named assignable (fallback within unnamed request)
+                foreach (var pair in _transients)
+                {
+                    if (pair.Key.Name == null) continue;
+                    if (serviceType.IsAssignableFrom(pair.Key.Type))
+                    {
+                        return pair.Value();//<--- transient creation point
+                    }
+                }
+                #endregion
             }
 
             //2.2 parent search (with name provided)
             //3.3 parent search (no name provided)
 
-            if (localOnly || _parentProvider is null)
+            if (localOnly)
+            {
+                return null;
+            }
+
+            if (_upstreamResolve is not null)
+            {
+                _parentReentrancyGuard.Value = true;
+                try
+                {
+                    // Delegate-based upstream resolution
+                    return _upstreamResolve(serviceType, key.Name);
+                }
+                finally
+                {
+                    _parentReentrancyGuard.Value = false;
+                }
+            }
+
+            if (_parentProvider is null)
             {
                 return null;
             }
@@ -446,6 +539,7 @@ namespace Minimal.Mvvm
             {
                 return _parentProvider switch
                 {
+                    IServiceContainer serviceContainer => serviceContainer.GetService(serviceType, key.Name, localOnly: false),//2.2+3.3
                     INamedServiceProvider namedServiceProvider => namedServiceProvider.GetService(serviceType, key.Name),//2.2+3.3
                     not null when key.Name == null => _parentProvider.GetService(serviceType),//3.3
                     _ => null
@@ -459,14 +553,18 @@ namespace Minimal.Mvvm
 
         /// <inheritdoc />
         IEnumerable<object> IServicesProvider.GetServices(Type serviceType) 
-            => GetServices(serviceType: serviceType, localOnly: false);
+            => GetServices(serviceType: serviceType);
 
         /// <inheritdoc />
         public IEnumerable<object> GetServices(Type serviceType)
-            => GetServices(serviceType, localOnly: false);
+            => GetServices(serviceType, localOnly: false, includeTransient: true);
 
         /// <inheritdoc />
         public IEnumerable<object> GetServices(Type serviceType, bool localOnly)
+            => GetServices(serviceType, localOnly: localOnly, includeTransient: true);
+
+        /// <inheritdoc />
+        public IEnumerable<object> GetServices(Type serviceType, bool localOnly, bool includeTransient)
         {
 #if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(serviceType);
@@ -503,7 +601,48 @@ namespace Minimal.Mvvm
                 }
             }
 
-            if (localOnly || _parentProvider is null)
+            if (includeTransient)
+            {
+                foreach (var pair in _transients)
+                {
+                    if (!serviceType.IsAssignableFrom(pair.Key.Type)) continue;
+
+                    var instance = pair.Value(); //<--- transient creation point
+                    if ((services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(instance))
+                    {
+                        yield return instance;
+                    }
+                }
+            }
+
+            if (localOnly)
+            {
+                yield break;
+            }
+
+            if (_upstreamEnumerate is not null)
+            {
+                _parentReentrancyGuard.Value = true;
+                try
+                {
+                    // Delegate-based upstream enumeration
+                    foreach (var service in _upstreamEnumerate(serviceType))
+                    {
+                        Debug.Assert(service != null, $"Service is null for type {serviceType}");
+                        if (service != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
+                        {
+                            yield return service;
+                        }
+                    }
+                }
+                finally
+                {
+                    _parentReentrancyGuard.Value = false;
+                }
+                yield break;
+            }
+
+            if (_parentProvider is null)
             {
                 yield break;
             }
@@ -513,6 +652,16 @@ namespace Minimal.Mvvm
             {
                 switch (_parentProvider)
                 {
+                    case IServiceContainer serviceContainer:
+                        foreach (var service in serviceContainer.GetServices(serviceType, localOnly: false, includeTransient))
+                        {
+                            Debug.Assert(service != null, $"Service is null for type {serviceType}");
+                            if (service != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
+                            {
+                                yield return service;
+                            }
+                        }
+                        break;
                     case IServicesProvider servicesProvider:
                         foreach (var service in servicesProvider.GetServices(serviceType))
                         {
@@ -544,6 +693,8 @@ namespace Minimal.Mvvm
                 _parentReentrancyGuard.Value = false;
             }
         }
+
+        #endregion
 
         #region Instance registration
 
@@ -675,6 +826,8 @@ namespace Minimal.Mvvm
 
         #endregion
 
+        #region Scope
+
         private void RegisterServiceCore(ServiceKey key, ServiceValue value, bool throwIfExists)
         {
             if (throwIfExists)
@@ -683,13 +836,22 @@ namespace Minimal.Mvvm
                 {
                     ThrowServiceExistsException(key.Type);
                 }
+                _transients.TryRemove(key, out _);
                 OnServiceAdded(key, value);
                 return;
             }
 
+            bool removeTransient = true;
             if (_services.TryUpdateOrAdd(key, value, out var oldValue))
             {
+                _transients.TryRemove(key, out _);
+                removeTransient = false;
                 OnServiceRemoved(key, oldValue);
+            }
+
+            if (removeTransient)
+            {
+                _transients.TryRemove(key, out _);
             }
             OnServiceAdded(key, value);
         }
@@ -811,9 +973,20 @@ namespace Minimal.Mvvm
 
         private bool UnregisterService(ServiceKey key)
         {
-            if (!_services.TryRemove(key, out var value)) return false;
-            OnServiceRemoved(key, value);
-            return true;
+            var removed = false;
+
+            if (_services.TryRemove(key, out var value))
+            {
+                OnServiceRemoved(key, value);
+                removed = true;
+            }
+
+            if (_transients.TryRemove(key, out _))
+            {
+                removed = true;
+            }
+
+            return removed;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -824,6 +997,7 @@ namespace Minimal.Mvvm
         {
             var entries = _services.ToArray();
             _services.Clear();
+            _transients.Clear();
 
             foreach (var entry in entries)
             {
@@ -897,6 +1071,10 @@ namespace Minimal.Mvvm
             GC.SuppressFinalize(this);
         }
 
+        #endregion
+
+        #region Helpers
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ValidateTypeCompatibility(Type serviceType, Type implementationType, string paramName)
         {
@@ -952,6 +1130,127 @@ namespace Minimal.Mvvm
             static System.Text.StringBuilder FormatKey(System.Text.StringBuilder sb, ServiceKey key)
                 => key.Name is null ? sb.Append($"({key.Type.FullName})")
                     : sb.Append($"({key.Type.FullName}, \"{key.Name}\")");
+        }
+
+        #endregion
+
+        #region Transient
+
+        /// <inheritdoc />
+        public void RegisterTransient(Type serviceType, Func<object> callback, bool throwIfExists = false)
+        {
+            RegisterTransient(serviceType: serviceType, callback: callback, name: null, throwIfExists);
+        }
+
+        /// <inheritdoc />
+        public void RegisterTransient(Type serviceType, Func<object> callback, string? name, bool throwIfExists = false)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(serviceType);
+            ArgumentNullException.ThrowIfNull(callback);
+#else
+            _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
+            _ = callback ?? throw new ArgumentNullException(nameof(callback));
+#endif
+            CheckDisposed();
+
+            ThrowOpenGenericTypesNotSupported(serviceType, nameof(serviceType));
+            var key = CreateServiceKey(serviceType, name);
+            RegisterTransientCore(key, serviceFactory: () => CreateServiceViaFactory(key, callback: callback, expectedType: serviceType), throwIfExists);
+        }
+
+        /// <inheritdoc />
+        public void RegisterTransient(Type serviceType, Type implementationType, Func<object> callback, bool throwIfExists = false)
+        {
+            RegisterTransient(serviceType: serviceType, implementationType: implementationType, callback: callback, name: null, throwIfExists);
+        }
+
+        /// <inheritdoc />
+        public void RegisterTransient(Type serviceType, Type implementationType, Func<object> callback, string? name, bool throwIfExists = false)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(serviceType);
+            ArgumentNullException.ThrowIfNull(implementationType);
+            ArgumentNullException.ThrowIfNull(callback);
+#else
+            _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
+            _ = implementationType ?? throw new ArgumentNullException(nameof(implementationType));
+            _ = callback ?? throw new ArgumentNullException(nameof(callback));
+#endif
+            CheckDisposed();
+
+            ValidateTypeCompatibility(serviceType, implementationType, nameof(implementationType));
+
+            var key = CreateServiceKey(serviceType, name);
+            RegisterTransientCore(key, serviceFactory: () => CreateServiceViaFactory(key, callback: callback, expectedType: implementationType), throwIfExists);
+        }
+
+        /// <inheritdoc />
+        public void RegisterTransient(Type serviceType, bool throwIfExists = false)
+        {
+            RegisterTransient(serviceType: serviceType, name: null, throwIfExists);
+        }
+
+        /// <inheritdoc />
+        public void RegisterTransient(Type serviceType, string? name, bool throwIfExists = false)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(serviceType);
+#else
+            _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
+#endif
+            CheckDisposed();
+
+            ThrowOpenGenericTypesNotSupported(serviceType, nameof(serviceType));
+            var key = CreateServiceKey(serviceType, name);
+            RegisterTransientCore(key, serviceFactory: () => CreateServiceViaConstructor(key, serviceType: serviceType), throwIfExists);
+        }
+
+        /// <inheritdoc />
+        public void RegisterTransient(Type serviceType, Type implementationType, bool throwIfExists = false)
+        {
+            RegisterTransient(serviceType: serviceType, implementationType: implementationType, name: null, throwIfExists);
+        }
+
+        /// <inheritdoc />
+        public void RegisterTransient(Type serviceType, Type implementationType, string? name, bool throwIfExists = false)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(serviceType);
+            ArgumentNullException.ThrowIfNull(implementationType);
+#else
+            _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
+            _ = implementationType ?? throw new ArgumentNullException(nameof(implementationType));
+#endif
+            CheckDisposed();
+
+            ValidateTypeCompatibility(serviceType, implementationType, nameof(implementationType));
+
+            var key = CreateServiceKey(serviceType, name);
+            RegisterTransientCore(key, serviceFactory: () => CreateServiceViaConstructor(key, serviceType: implementationType), throwIfExists);
+        }
+
+        private void RegisterTransientCore(ServiceKey key, Func<object> serviceFactory, bool throwIfExists)
+        {
+            if (throwIfExists)
+            {
+                if (_services.TryGetValue(key, out _))
+                {
+                    ThrowServiceExistsException(key.Type);
+                }
+                if (!_transients.TryAdd(key, serviceFactory))
+                {
+                    ThrowServiceExistsException(key.Type);
+                }
+            }
+            else
+            {
+                if (_services.TryRemove(key, out var oldValue))
+                {
+                    OnServiceRemoved(key, oldValue);
+                }
+                _transients.TryUpdateOrAdd(key, serviceFactory, out _);
+            }
         }
 
         #endregion

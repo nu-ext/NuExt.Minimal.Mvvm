@@ -168,7 +168,7 @@ namespace Minimal.Mvvm
                 }
 
                 var next = new ICommand[current.Length + 1];
-#if NET || NETSTANDARD2_1_OR_GREATER
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
                 current.AsSpan().CopyTo(next);
                 next[^1] = command;
 #else
@@ -217,7 +217,7 @@ namespace Minimal.Mvvm
                 var next = new ICommand[current.Length - 1];
                 if (idx > 0)
                 {
-#if NET || NETSTANDARD2_1_OR_GREATER
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
                     current.AsSpan(0, idx).CopyTo(next);
 #else
                     Array.Copy(current, 0, next, 0, idx);
@@ -225,7 +225,7 @@ namespace Minimal.Mvvm
                 }
                 if (idx < current.Length - 1)
                 {
-#if NET || NETSTANDARD2_1_OR_GREATER
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
                     current.AsSpan(idx + 1).CopyTo(next.AsSpan(idx));
 #else
                     Array.Copy(current, idx + 1, next, idx, current.Length - idx - 1);

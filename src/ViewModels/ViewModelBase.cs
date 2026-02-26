@@ -14,7 +14,7 @@ namespace Minimal.Mvvm
     /// <remarks>
     /// <para>
     /// This class implements the <strong>Service Locator pattern</strong> via its 
-    /// <see cref="GetService{T}(System.String)"/> method.
+    /// <see cref="GetService{T}(string)"/> method.
     /// This design is a pragmatic choice for composite UI and MVVM scenarios where:
     /// <list type="bullet">
     /// <item>Dependencies cannot be fully known at ViewModel construction time.</item>
@@ -41,7 +41,7 @@ namespace Minimal.Mvvm
         protected ViewModelBase(IServiceContainer? fallbackServices)
         {
             _fallbackServices = fallbackServices;
-            _services = new Lazy<IServiceContainer>(() => new ServiceProvider(this));
+            _services = new Lazy<IServiceContainer>(() => new ServiceProvider(ResolveUpstream, EnumerateUpstream));
         }
 
         #region Properties
@@ -174,6 +174,7 @@ namespace Minimal.Mvvm
         /// 3) parent ViewModel (named lookup if supported), 4) <see cref="ServiceProvider.Default"/>.
         /// </para>
         /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="serviceType"/> is <see langword="null"/>.</exception>
         object? INamedServiceProvider.GetService(Type serviceType, string? name)
         {
 #if NET6_0_OR_GREATER
@@ -181,16 +182,30 @@ namespace Minimal.Mvvm
 #else
             _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
 #endif
-            var service = Services.GetService(serviceType, name);
-            if (service != null) return service;
+            if (IsServicesCreated)
+            {
+                var service = Services.GetService(serviceType, name, localOnly: true);
+                if (service != null) return service;
+            }
 
-            service = _fallbackServices?.GetService(serviceType, name);
+            return ResolveUpstream(serviceType, name);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private object? ResolveUpstream(Type serviceType, string? name)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(serviceType);
+#else
+            _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
+#endif
+            var service = _fallbackServices?.GetService(serviceType, name);
             if (service != null) return service;
 
             switch (ParentViewModel)
             {
-                case INamedServiceProvider parent:
-                    service = parent.GetService(serviceType, name);
+                case INamedServiceProvider namedServiceProvider:
+                    service = namedServiceProvider.GetService(serviceType, name);
                     break;
                 case IServiceProvider serviceProvider when name is null:
                     service = serviceProvider.GetService(serviceType);
@@ -205,9 +220,12 @@ namespace Minimal.Mvvm
         /// </summary>
         /// <typeparam name="T">The type of service to retrieve.</typeparam>
         /// <returns>
-        /// An enumerable sequence of distinct service instances of type <typeparamref name="T"/>.
+        /// A non-null enumerable whose elements are unique by reference equality within this invocation; may be empty.
+        /// Order is not guaranteed.
         /// </returns>
-        /// <remarks>Does not consult <see cref="ServiceProvider.Default"/>.</remarks>
+        /// <remarks>
+        /// Enumerates only scoped sources (local → fallback → parent). Does not consult <see cref="ServiceProvider.Default"/>.
+        /// </remarks>
         public IEnumerable<T> GetServices<T>()
         {
             foreach (var service in GetServices(typeof(T)))
@@ -222,12 +240,13 @@ namespace Minimal.Mvvm
         /// </summary>
         /// <param name="serviceType">The type of services to retrieve.</param>
         /// <returns>
-        /// An enumerable sequence of distinct service instances of the specified type.
+        /// A non-null enumerable whose elements are unique by reference equality within this invocation; may be empty.
+        /// Order is not guaranteed.
         /// </returns>
         /// <remarks>
-        /// Enumerates services only from scoped sources (local → fallback → parent).
-        /// Does not consult <see cref="ServiceProvider.Default"/> by design to keep enumeration deterministic.
+        /// Enumerates only scoped sources (local → fallback → parent). Does not consult <see cref="ServiceProvider.Default"/>.
         /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="serviceType"/> is <see langword="null"/>.</exception>
         public IEnumerable<object> GetServices(Type serviceType)
         {
 #if NET6_0_OR_GREATER
@@ -236,7 +255,19 @@ namespace Minimal.Mvvm
             _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
 #endif
             HashSet<object>? services = null;
-            foreach (var service in Services.GetServices(serviceType))
+            if (IsServicesCreated)
+            {
+                foreach (var service in Services.GetServices(serviceType, localOnly: true))
+                {
+                    Debug.Assert(service != null, $"Service is null for type {serviceType}");
+                    if (service != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
+                    {
+                        yield return service;
+                    }
+                }
+            }
+
+            foreach (var service in EnumerateUpstream(serviceType))
             {
                 Debug.Assert(service != null, $"Service is null for type {serviceType}");
                 if (service != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
@@ -244,13 +275,21 @@ namespace Minimal.Mvvm
                     yield return service;
                 }
             }
+        }
 
+        private IEnumerable<object> EnumerateUpstream(Type serviceType)
+        {
+#if NET6_0_OR_GREATER
+            ArgumentNullException.ThrowIfNull(serviceType);
+#else
+            _ = serviceType ?? throw new ArgumentNullException(nameof(serviceType));
+#endif
             if (_fallbackServices != null)
             {
                 foreach (var service in _fallbackServices.GetServices(serviceType))
                 {
                     Debug.Assert(service != null, $"Service is null for type {serviceType}");
-                    if (service != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
+                    if (service != null)
                     {
                         yield return service;
                     }
@@ -263,7 +302,7 @@ namespace Minimal.Mvvm
                     foreach (var service in servicesProvider.GetServices(serviceType))
                     {
                         Debug.Assert(service != null, $"Service is null for type {serviceType}");
-                        if (service != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
+                        if (service != null)
                         {
                             yield return service;
                         }
@@ -271,14 +310,14 @@ namespace Minimal.Mvvm
                     break;
                 case INamedServiceProvider namedServiceProvider:
                     var nullNamedService = namedServiceProvider.GetService(serviceType, null);
-                    if (nullNamedService != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(nullNamedService))
+                    if (nullNamedService != null)
                     {
                         yield return nullNamedService;
                     }
                     break;
                 case IServiceProvider serviceProvider:
                     var typedService = serviceProvider.GetService(serviceType);
-                    if (typedService != null && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(typedService))
+                    if (typedService != null)
                     {
                         yield return typedService;
                     }
@@ -289,10 +328,14 @@ namespace Minimal.Mvvm
         /// <summary>Gets a service of type <typeparamref name="T"/> from the local container only.</summary>
         /// <typeparam name="T">The type of service to retrieve.</typeparam>
         /// <returns>An instance of the requested service, or <see langword="null"/> if the service is not available.</returns>
+        /// <remarks>
+        /// Enumerates local registrations only; does not consult the fallback container, parent, or <see cref="ServiceProvider.Default"/>.
+        /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected T? GetLocalService<T>() where T : class
         {
-            return GetLocalService<T>(name: null);
+            if (!IsServicesCreated) return null;
+            return Services.GetLocalService<T>(name: null);
         }
 
         /// <summary>Gets a named service of type <typeparamref name="T"/> from the local container only.</summary>
@@ -308,26 +351,34 @@ namespace Minimal.Mvvm
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected T? GetLocalService<T>(string? name) where T : class
         {
-            return (T?)Services.GetService(typeof(T), name, localOnly: true);
+            if (!IsServicesCreated) return null;
+            return Services.GetLocalService<T>(name: name);
         }
 
         /// <summary>Gets all services of type <typeparamref name="T"/> from the local container only.</summary>
         /// <typeparam name="T">The type of service to retrieve.</typeparam>
         /// <returns>
-        /// An enumerable sequence of distinct service instances of type <typeparamref name="T"/>.
+        /// A non-null enumerable whose elements are unique by reference equality within this invocation; may be empty.
+        /// Order is not guaranteed.
         /// </returns>
+        /// <remarks>
+        /// Enumerates local registrations only; does not consult the fallback container, parent, or <see cref="ServiceProvider.Default"/>.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected IEnumerable<T> GetLocalServices<T>() where T : class
         {
-            foreach (var service in Services.GetServices(typeof(T), localOnly: true))
-            {
-                yield return (T)service;
-            }
+            if (!IsServicesCreated) return Array.Empty<T>();
+            return Services.GetLocalServices<T>();
         }
 
         /// <summary>
         /// Gets a service from the local container; if not found, tries the optional fallback container.
-        /// Does not consult ParentViewModel or ServiceProvider.Default.
+        /// Does not consult <see cref="ParentViewModel"/> or <see cref="ServiceProvider.Default"/>.
         /// </summary>
+        /// <typeparam name="T">The service type.</typeparam>
+        /// <returns>
+        /// An instance of <typeparamref name="T"/> if found locally or in the fallback container; otherwise, <see langword="null"/>.
+        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected T? GetLocalOrFallbackService<T>() where T : class
         {
@@ -336,13 +387,22 @@ namespace Minimal.Mvvm
 
         /// <summary>
         /// Gets a service from the local container; if not found, tries the optional fallback container.
-        /// Does not consult ParentViewModel or ServiceProvider.Default.
+        /// Does not consult <see cref="ParentViewModel"/> or <see cref="ServiceProvider.Default"/>.
         /// </summary>
-        /// <remarks>Name comparison is ordinal and case-sensitive; empty is treated as unnamed.</remarks>
+        /// <typeparam name="T">The service type.</typeparam>
+        /// <param name="name">
+        /// The registration name. <see langword="null"/> or empty selects unnamed registrations. Name comparison is ordinal and case-sensitive.
+        /// </param>
+        /// <returns>
+        /// An instance of <typeparamref name="T"/> if found locally or in the fallback container; otherwise, <see langword="null"/>.
+        /// </returns>
+        /// <remarks>
+        /// Resolution checks the local container first, then the optional fallback container; it does not enumerate or consult parent or default providers.
+        /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected T? GetLocalOrFallbackService<T>(string? name) where T : class
         {
-            return (T?)Services.GetService(typeof(T), name, localOnly: true) ?? (T?)_fallbackServices?.GetService(typeof(T), name);
+            return GetLocalService<T>(name) ?? _fallbackServices?.GetService<T>(name);
         }
 
         /// <summary>
