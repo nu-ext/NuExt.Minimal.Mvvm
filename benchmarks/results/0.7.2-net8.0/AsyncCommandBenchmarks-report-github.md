@@ -1,0 +1,27 @@
+```
+
+BenchmarkDotNet v0.15.8, Windows 10 (10.0.19045.6456/22H2/2022Update)
+Intel Core i7-8700T CPU 2.40GHz (Coffee Lake), 1 CPU, 12 logical and 6 physical cores
+.NET SDK 10.0.103
+  [Host]     : .NET 8.0.24 (8.0.24, 8.0.2426.7010), X64 RyuJIT x86-64-v3
+  DefaultJob : .NET 8.0.24 (8.0.24, 8.0.2426.7010), X64 RyuJIT x86-64-v3
+
+
+```
+| Method                                                | ConcurrentTasks | Mean      | Error    | StdDev   | Median    | Gen0      | Gen1      | Gen2      | Allocated  |
+|------------------------------------------------------ |---------------- |----------:|---------:|---------:|----------:|----------:|----------:|----------:|-----------:|
+| **ExecuteAsync_MultipleConcurrentTasks_NoCancellation**   | **1**               | **106.00 ms** | **1.736 ms** | **1.623 ms** | **105.71 ms** |         **-** |         **-** |         **-** |      **992 B** |
+| ExecuteAsync_MultipleConcurrentTasks_WithCancellation | 1               |  17.24 ms | 0.342 ms | 0.698 ms |  17.32 ms |         - |         - |         - |     3680 B |
+| Cancel_Performance_UnderLoad                          | 1               |  17.39 ms | 0.352 ms | 1.037 ms |  17.76 ms |         - |         - |         - |     3528 B |
+| **ExecuteAsync_MultipleConcurrentTasks_NoCancellation**   | **10**              | **105.01 ms** | **2.061 ms** | **2.531 ms** | **104.00 ms** |         **-** |         **-** |         **-** |     **7472 B** |
+| ExecuteAsync_MultipleConcurrentTasks_WithCancellation | 10              |  18.07 ms | 0.354 ms | 0.638 ms |  18.07 ms |         - |         - |         - |    25248 B |
+| Cancel_Performance_UnderLoad                          | 10              |  17.90 ms | 0.354 ms | 0.909 ms |  18.06 ms |         - |         - |         - |    24243 B |
+| **ExecuteAsync_MultipleConcurrentTasks_NoCancellation**   | **100**             | **104.98 ms** | **1.981 ms** | **2.035 ms** | **105.60 ms** |         **-** |         **-** |         **-** |    **72272 B** |
+| ExecuteAsync_MultipleConcurrentTasks_WithCancellation | 100             |  17.69 ms | 0.352 ms | 0.803 ms |  17.75 ms |   31.2500 |         - |         - |   237348 B |
+| Cancel_Performance_UnderLoad                          | 100             |  17.87 ms | 0.354 ms | 0.497 ms |  17.81 ms |   31.2500 |         - |         - |   227700 B |
+| **ExecuteAsync_MultipleConcurrentTasks_NoCancellation**   | **1000**            | **106.11 ms** | **1.708 ms** | **1.598 ms** | **105.69 ms** |         **-** |         **-** |         **-** |   **720272 B** |
+| ExecuteAsync_MultipleConcurrentTasks_WithCancellation | 1000            |  17.86 ms | 0.355 ms | 0.701 ms |  18.00 ms |  375.0000 |  281.2500 |         - |  2354167 B |
+| Cancel_Performance_UnderLoad                          | 1000            |  17.83 ms | 0.354 ms | 1.005 ms |  18.05 ms |  343.7500 |  281.2500 |         - |  2258084 B |
+| **ExecuteAsync_MultipleConcurrentTasks_NoCancellation**   | **10000**           | **110.96 ms** | **2.066 ms** | **2.029 ms** | **111.15 ms** | **1000.0000** |  **800.0000** |         **-** |  **7200272 B** |
+| ExecuteAsync_MultipleConcurrentTasks_WithCancellation | 10000           | 103.07 ms | 1.334 ms | 1.183 ms | 102.86 ms | 4600.0000 | 2800.0000 | 1000.0000 | 23662126 B |
+| Cancel_Performance_UnderLoad                          | 10000           |  98.61 ms | 1.953 ms | 3.316 ms |  98.06 ms | 4333.3333 | 2500.0000 |  833.3333 | 22683607 B |

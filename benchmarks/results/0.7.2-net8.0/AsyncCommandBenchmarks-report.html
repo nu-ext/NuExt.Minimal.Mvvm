@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8' />
+<title>Minimal.Mvvm.Benchmarks.AsyncCommandBenchmarks-20260302-002628</title>
+
+<style type="text/css">
+	table { border-collapse: collapse; display: block; width: 100%; overflow: auto; }
+	td, th { padding: 6px 13px; border: 1px solid #ddd; text-align: right; }
+	tr { background-color: #fff; border-top: 1px solid #ccc; }
+	tr:nth-child(even) { background: #f8f8f8; }
+</style>
+</head>
+<body>
+<pre><code>
+BenchmarkDotNet v0.15.8, Windows 10 (10.0.19045.6456/22H2/2022Update)
+Intel Core i7-8700T CPU 2.40GHz (Coffee Lake), 1 CPU, 12 logical and 6 physical cores
+.NET SDK 10.0.103
+  [Host]     : .NET 8.0.24 (8.0.24, 8.0.2426.7010), X64 RyuJIT x86-64-v3
+  DefaultJob : .NET 8.0.24 (8.0.24, 8.0.2426.7010), X64 RyuJIT x86-64-v3
+</code></pre>
+<pre><code></code></pre>
+
+<table>
+<thead><tr><th>Method                                         </th><th>ConcurrentTasks</th><th>Mean</th><th>Error</th><th>StdDev</th><th>Median</th><th>Gen0</th><th>Gen1</th><th>Gen2</th><th>Allocated</th>
+</tr>
+</thead><tbody><tr><td>ExecuteAsync_MultipleConcurrentTasks_NoCancellation</td><td>1</td><td>106.00 ms</td><td>1.736 ms</td><td>1.623 ms</td><td>105.71 ms</td><td>-</td><td>-</td><td>-</td><td>992 B</td>
+</tr><tr><td>ExecuteAsync_MultipleConcurrentTasks_WithCancellation</td><td>1</td><td>17.24 ms</td><td>0.342 ms</td><td>0.698 ms</td><td>17.32 ms</td><td>-</td><td>-</td><td>-</td><td>3680 B</td>
+</tr><tr><td>Cancel_Performance_UnderLoad</td><td>1</td><td>17.39 ms</td><td>0.352 ms</td><td>1.037 ms</td><td>17.76 ms</td><td>-</td><td>-</td><td>-</td><td>3528 B</td>
+</tr><tr><td>ExecuteAsync_MultipleConcurrentTasks_NoCancellation</td><td>10</td><td>105.01 ms</td><td>2.061 ms</td><td>2.531 ms</td><td>104.00 ms</td><td>-</td><td>-</td><td>-</td><td>7472 B</td>
+</tr><tr><td>ExecuteAsync_MultipleConcurrentTasks_WithCancellation</td><td>10</td><td>18.07 ms</td><td>0.354 ms</td><td>0.638 ms</td><td>18.07 ms</td><td>-</td><td>-</td><td>-</td><td>25248 B</td>
+</tr><tr><td>Cancel_Performance_UnderLoad</td><td>10</td><td>17.90 ms</td><td>0.354 ms</td><td>0.909 ms</td><td>18.06 ms</td><td>-</td><td>-</td><td>-</td><td>24243 B</td>
+</tr><tr><td>ExecuteAsync_MultipleConcurrentTasks_NoCancellation</td><td>100</td><td>104.98 ms</td><td>1.981 ms</td><td>2.035 ms</td><td>105.60 ms</td><td>-</td><td>-</td><td>-</td><td>72272 B</td>
+</tr><tr><td>ExecuteAsync_MultipleConcurrentTasks_WithCancellation</td><td>100</td><td>17.69 ms</td><td>0.352 ms</td><td>0.803 ms</td><td>17.75 ms</td><td>31.2500</td><td>-</td><td>-</td><td>237348 B</td>
+</tr><tr><td>Cancel_Performance_UnderLoad</td><td>100</td><td>17.87 ms</td><td>0.354 ms</td><td>0.497 ms</td><td>17.81 ms</td><td>31.2500</td><td>-</td><td>-</td><td>227700 B</td>
+</tr><tr><td>ExecuteAsync_MultipleConcurrentTasks_NoCancellation</td><td>1000</td><td>106.11 ms</td><td>1.708 ms</td><td>1.598 ms</td><td>105.69 ms</td><td>-</td><td>-</td><td>-</td><td>720272 B</td>
+</tr><tr><td>ExecuteAsync_MultipleConcurrentTasks_WithCancellation</td><td>1000</td><td>17.86 ms</td><td>0.355 ms</td><td>0.701 ms</td><td>18.00 ms</td><td>375.0000</td><td>281.2500</td><td>-</td><td>2354167 B</td>
+</tr><tr><td>Cancel_Performance_UnderLoad</td><td>1000</td><td>17.83 ms</td><td>0.354 ms</td><td>1.005 ms</td><td>18.05 ms</td><td>343.7500</td><td>281.2500</td><td>-</td><td>2258084 B</td>
+</tr><tr><td>ExecuteAsync_MultipleConcurrentTasks_NoCancellation</td><td>10000</td><td>110.96 ms</td><td>2.066 ms</td><td>2.029 ms</td><td>111.15 ms</td><td>1000.0000</td><td>800.0000</td><td>-</td><td>7200272 B</td>
+</tr><tr><td>ExecuteAsync_MultipleConcurrentTasks_WithCancellation</td><td>10000</td><td>103.07 ms</td><td>1.334 ms</td><td>1.183 ms</td><td>102.86 ms</td><td>4600.0000</td><td>2800.0000</td><td>1000.0000</td><td>23662126 B</td>
+</tr><tr><td>Cancel_Performance_UnderLoad</td><td>10000</td><td>98.61 ms</td><td>1.953 ms</td><td>3.316 ms</td><td>98.06 ms</td><td>4333.3333</td><td>2500.0000</td><td>833.3333</td><td>22683607 B</td>
+</tr></tbody></table>
+</body>
+</html>
