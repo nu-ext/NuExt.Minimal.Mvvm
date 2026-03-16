@@ -7,7 +7,7 @@
     <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release' or '$(Configuration)' == 'Sources'">true</GeneratePackageOnBuild>
     <PackageTags>nuext;minimal;mvvm;view;viewmodel;model;ui;di;command;relaycommand;asynccommand;asyncvaluecommand;multiple;concurrent;async;servicecontainer;weakevent</PackageTags>
     <Description>A minimal, high‑performance MVVM core for .NET with deterministic async command model, lightweight ViewModel base classes, and a small hierarchical service provider designed for UI applications.</Description>
-    <Version>0.7.2</Version>
+    <Version>0.7.3</Version>
     <RootNamespace>Minimal.Mvvm</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591;NETSDK1233</NoWarn>

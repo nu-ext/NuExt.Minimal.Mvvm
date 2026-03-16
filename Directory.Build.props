@@ -6,7 +6,7 @@
 
   <!-- NuGet -->
   <PropertyGroup>
-    <Authors>IvanGit</Authors>
+    <Authors>ivanvoyager</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>Copyright (c) $(Authors) $([System.DateTime]::Today.ToString(yyyy))</Copyright>
   </PropertyGroup>

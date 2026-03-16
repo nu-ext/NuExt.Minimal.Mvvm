@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 
-namespace Minimal.Mvvm.Tests
-{
+namespace Minimal.Mvvm.Tests;
+
 	[TestFixture]
 	public class ServiceProviderTestsV3
 	{
@@ -25,8 +25,8 @@ namespace Minimal.Mvvm.Tests
 		}
 
 		private sealed class ParentLoopbackProvider(ServiceProvider child) : INamedServiceProvider
-        {
-            public object? GetService(Type serviceType) => ((IServiceProvider)child).GetService(serviceType);
+    {
+        public object? GetService(Type serviceType) => ((IServiceProvider)child).GetService(serviceType);
 
 			public object? GetService(Type serviceType, string? name)
 				=> child.GetService(serviceType, name);
@@ -37,14 +37,14 @@ namespace Minimal.Mvvm.Tests
 		private sealed class Foo2 : IFoo { }
 
 		private sealed class Bar(int x = 0)
-        { 
+    { 
 			public int X = x;
-        }
+    }
 
 		private sealed class ValueEq(int v) : IFoo
-        {
+    {
 			public int V = v;
-            public override bool Equals(object? obj) => obj is ValueEq other && other.V == V;
+        public override bool Equals(object? obj) => obj is ValueEq other && other.V == V;
 			public override int GetHashCode() => V;
 		}
 
@@ -110,13 +110,13 @@ namespace Minimal.Mvvm.Tests
 
 			Assert.Throws<InvalidOperationException>(() => sp.GetService(typeof(Bar)));
 			var resolved = sp.GetService(typeof(Bar));
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(resolved, Is.InstanceOf<Bar>());
-                Assert.That(((Bar)resolved!).X, Is.EqualTo(42));
-                Assert.That(attempts, Is.EqualTo(2));
-            }
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(resolved, Is.InstanceOf<Bar>());
+            Assert.That(((Bar)resolved!).X, Is.EqualTo(42));
+            Assert.That(attempts, Is.EqualTo(2));
         }
+    }
 
 		[Test]
 		public async Task Concurrent_GetService_SingleActivation()
@@ -141,13 +141,13 @@ namespace Minimal.Mvvm.Tests
 
 			var results = await Task.WhenAll(tasks).ConfigureAwait(false);
 
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(created, Is.EqualTo(1), "Factory must run once");
-                Assert.That(results, Has.All.Not.Null);
-            }
-            // All references must be the same
-            var first = results[0];
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(created, Is.EqualTo(1), "Factory must run once");
+            Assert.That(results, Has.All.Not.Null);
+        }
+        // All references must be the same
+        var first = results[0];
 			foreach (var r in results)
 			{
 				Assert.That(r, Is.SameAs(first));
@@ -176,12 +176,12 @@ namespace Minimal.Mvvm.Tests
 			});
 
 			var ex = Assert.Throws<InvalidOperationException>(() => sp.GetService(typeof(string)));
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(ex!.Message, Does.Contain("Circular dependency detected"));
-                Assert.That(ex.Message, Does.Contain(typeof(string).FullName));
-            }
-            Assert.That(ex.Message, Does.Contain(typeof(int).FullName));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ex!.Message, Does.Contain("Circular dependency detected"));
+            Assert.That(ex.Message, Does.Contain(typeof(string).FullName));
+        }
+        Assert.That(ex.Message, Does.Contain(typeof(int).FullName));
 		}
 
 		#endregion
@@ -242,16 +242,16 @@ namespace Minimal.Mvvm.Tests
 			sp.RegisterService(typeof(IFoo), b, throwIfExists: false);
 
 			var resolved = sp.GetService(typeof(IFoo));
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(resolved, Is.SameAs(b));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(resolved, Is.SameAs(b));
 
-                // Instance registration calls OnServiceAdded immediately.
-                // Replacement triggers OnServiceRemoved(old) and OnServiceAdded(new).
-                Assert.That(sp.Events, Contains.Item("Added:Foo"));
-                Assert.That(sp.Events, Contains.Item("Removed:Foo"));
-                Assert.That(sp.Events, Contains.Item("Added:Foo2"));
-            }
+            // Instance registration calls OnServiceAdded immediately.
+            // Replacement triggers OnServiceRemoved(old) and OnServiceAdded(new).
+            Assert.That(sp.Events, Contains.Item("Added:Foo"));
+            Assert.That(sp.Events, Contains.Item("Removed:Foo"));
+            Assert.That(sp.Events, Contains.Item("Added:Foo2"));
+        }
 		}
 
 		[Test]
@@ -286,12 +286,12 @@ namespace Minimal.Mvvm.Tests
 			sp.RegisterService(typeof(IFoo), inst);
 
 			var ok = sp.UnregisterService(inst);
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(ok, Is.True);
-                Assert.That(sp.GetService(typeof(IFoo)), Is.Null);
-            }
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ok, Is.True);
+            Assert.That(sp.GetService(typeof(IFoo)), Is.Null);
         }
+    }
 
 		[Test]
 		public void Clear_RemovesAll_AndRaisesRemovedForCreated()
@@ -315,13 +315,13 @@ namespace Minimal.Mvvm.Tests
 				if (e.StartsWith("Removed:", StringComparison.Ordinal)) removed++;
 			}
 
-            using (Assert.EnterMultipleScope())
-            {
-                Assert.That(removed, Is.GreaterThanOrEqualTo(2));
-                Assert.That(sp.GetService(typeof(IFoo)), Is.Null);
-                Assert.That(sp.GetService(typeof(Bar)), Is.Null);
-            }
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(removed, Is.GreaterThanOrEqualTo(2));
+            Assert.That(sp.GetService(typeof(IFoo)), Is.Null);
+            Assert.That(sp.GetService(typeof(Bar)), Is.Null);
         }
+    }
 
 		#endregion
 
@@ -371,48 +371,47 @@ namespace Minimal.Mvvm.Tests
 			Assert.DoesNotThrow(() => sp.Dispose());
 		}
 
-        #endregion
+    #endregion
 
 
-        [Test]
-        public void GetService_Generic_Unnamed_Works()
-        {
-            var sp = new ServiceProvider();
-            sp.RegisterService(typeof(IFoo), new Foo());
+    [Test]
+    public void GetService_Generic_Unnamed_Works()
+    {
+        var sp = new ServiceProvider();
+        sp.RegisterService(typeof(IFoo), new Foo());
 
-            var foo = sp.GetService<IFoo>();
-            Assert.That(foo, Is.Not.Null);
-        }
-
-        [Test]
-        public void GetService_Generic_Named_Works()
-        {
-            var sp = new ServiceProvider();
-            sp.RegisterService(typeof(IFoo), new Foo(), name: "X");
-
-            var foo = sp.GetService<IFoo>("X");
-            Assert.That(foo, Is.Not.Null);
-        }
-
-        [Test]
-        public void GetRequiredService_Throws_WhenMissing()
-        {
-            var sp = new ServiceProvider();
-            Assert.Throws<InvalidOperationException>(() =>
-                sp.GetRequiredService<IFoo>());
-        }
-
-        [Test]
-        public void GetServices_Generic_Yields_All()
-        {
-            var sp = new ServiceProvider();
-            sp.RegisterService(typeof(IFoo), new Foo());
-            sp.RegisterService(typeof(IFoo), new Foo(), name: "A");
-
-            var all = new List<IFoo>(sp.GetServices<IFoo>());
-
-            Assert.That(all, Has.Count.EqualTo(2));
-        }
-
+        var foo = sp.GetService<IFoo>();
+        Assert.That(foo, Is.Not.Null);
     }
+
+    [Test]
+    public void GetService_Generic_Named_Works()
+    {
+        var sp = new ServiceProvider();
+        sp.RegisterService(typeof(IFoo), new Foo(), name: "X");
+
+        var foo = sp.GetService<IFoo>("X");
+        Assert.That(foo, Is.Not.Null);
+    }
+
+    [Test]
+    public void GetRequiredService_Throws_WhenMissing()
+    {
+        var sp = new ServiceProvider();
+        Assert.Throws<InvalidOperationException>(() =>
+            sp.GetRequiredService<IFoo>());
+    }
+
+    [Test]
+    public void GetServices_Generic_Yields_All()
+    {
+        var sp = new ServiceProvider();
+        sp.RegisterService(typeof(IFoo), new Foo());
+        sp.RegisterService(typeof(IFoo), new Foo(), name: "A");
+
+        var all = new List<IFoo>(sp.GetServices<IFoo>());
+
+        Assert.That(all, Has.Count.EqualTo(2));
+    }
+
 }
