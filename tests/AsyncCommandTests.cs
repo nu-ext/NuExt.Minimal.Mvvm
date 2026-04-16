@@ -220,7 +220,7 @@ internal class AsyncCommandTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(command.AllowConcurrentExecution, Is.False);
-            Assert.That(command.ContinueOnCapturedContext, Is.True);
+            Assert.That(command.ContinueOnCapturedContext, Is.False);
         }
     }
 

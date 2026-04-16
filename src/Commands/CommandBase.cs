@@ -22,7 +22,7 @@ namespace Minimal.Mvvm;
 /// </remarks>
 public abstract class CommandBase : INotifyPropertyChanged
 {
-    private SynchronizationContext? _ui;
+    private volatile SynchronizationContext? _ui;
     private SendOrPostCallback? _propertyChangedCallback;
     private SendOrPostCallback? _canExecuteChangedCallback;
     private volatile int _executingCount;
@@ -90,8 +90,7 @@ public abstract class CommandBase : INotifyPropertyChanged
     {
         add
         {
-            SynchronizationContext? current = null;
-            EnsureSynchronizationContext(ref current);
+            CaptureSynchronizationContext();
             _canExecuteChanged.AddHandler(value);
         }
         remove => _canExecuteChanged.RemoveHandler(value);
@@ -107,8 +106,7 @@ public abstract class CommandBase : INotifyPropertyChanged
     {
         add
         {
-            SynchronizationContext? current = null;
-            EnsureSynchronizationContext(ref current);
+            CaptureSynchronizationContext();
             PropertyChanged += value;
         }
         remove => PropertyChanged -= value;
@@ -123,15 +121,13 @@ public abstract class CommandBase : INotifyPropertyChanged
     /// Call this method from the UI thread after constructing the command if it was created on a background thread.
     /// </summary>
     /// <remarks>
-    /// If a context is already captured, this method does nothing.
+    /// If a context is already captured, this method does nothing. The operation is thread-safe and idempotent.
     /// </remarks>
-    /// <param name="current">Receives the current context snapshot.</param>
-    public void EnsureSynchronizationContext(ref SynchronizationContext? current)
+    public void CaptureSynchronizationContext()
     {
-        current = SynchronizationContext.Current;
-        if (_ui is null && current is not null)
+        if (_ui is null && SynchronizationContext.Current is { } current)
         {
-            _ui = current;
+            Interlocked.CompareExchange(ref _ui, current, null);
         }
     }
 
@@ -252,10 +248,8 @@ public abstract class CommandBase : INotifyPropertyChanged
             return;
         }
 
-        SynchronizationContext? current = null;
-        EnsureSynchronizationContext(ref current);
-
-        if (_ui is not null && current != _ui)
+        CaptureSynchronizationContext();
+        if (_ui is not null && !_ui.CheckAccess())
         {
             _ui.Post(_propertyChangedCallback ??= OnPropertyChanged, e);
             return;
@@ -290,10 +284,8 @@ public abstract class CommandBase : INotifyPropertyChanged
             return;
         }
 
-        SynchronizationContext? current = null;
-        EnsureSynchronizationContext(ref current);
-
-        if (_ui is not null && current != _ui)
+        CaptureSynchronizationContext();
+        if (_ui is not null && !_ui.CheckAccess())
         {
             _ui.Post(_canExecuteChangedCallback ??= OnCanExecuteChanged, null);
             return;

@@ -37,14 +37,9 @@ public abstract class AsyncCommandBase<T> : CommandBase<T>, IAsyncCommand<T>
     /// </summary>
     /// <value>
     /// <see langword="true"/> to marshal continuations back to the original context; 
-    /// otherwise, <see langword="false"/>. The default is <see langword="true"/> for UI compatibility.
+    /// otherwise, <see langword="false"/>. The default is <see langword="false"/>.
     /// </value>
-    /// <remarks>
-    /// When <see langword="true"/>, property change notifications and <see cref="ICommand.CanExecuteChanged"/>
-    /// events will be raised on the original context (typically the UI thread).
-    /// Set to <see langword="false"/> for optimal performance in background scenarios.
-    /// </remarks>
-    public bool ContinueOnCapturedContext { get; init; } = true;
+    public bool ContinueOnCapturedContext { get; init; }
 
     #endregion
 
