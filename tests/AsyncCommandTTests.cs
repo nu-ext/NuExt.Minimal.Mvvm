@@ -237,35 +237,6 @@ public class AsyncCommandTTests
     }
 
     [Test, Apartment(ApartmentState.STA)]
-    public async Task ContinueOnCapturedContext_False_DoesNotCaptureContext()
-    {
-        SynchronizationContext? context = null;
-        // Arrange
-        var command = new AsyncCommand<int>(async (param, ct) =>
-        {
-            await Task.Delay(1, ct);
-        })
-        {
-            ContinueOnCapturedContext = false
-        };
-
-        (command as INotifyPropertyChanged).PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(IAsyncCommand.IsExecuting)
-                && command.IsExecuting == false)
-            {
-                context = SynchronizationContext.Current;
-            }
-        };
-
-        // Act
-        await command.ExecuteAsync(42).ConfigureAwait(false);
-
-        // Assert
-        Assert.That(context, Is.Null);
-    }
-
-    [Test, Apartment(ApartmentState.STA)]
     public async Task ContinueOnCapturedContext_True_CapturesContextWhenAvailable()
     {
         // Arrange

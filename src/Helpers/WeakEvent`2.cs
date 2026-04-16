@@ -57,6 +57,11 @@ public sealed class WeakEvent<TEventHandler, TEventArgs> where TEventHandler : D
 
     private readonly List<WeakHandler> _handlers = new(4);
 
+    public int Count
+    {
+        get { lock (_handlers) { return _handlers.Count; } }
+    }
+
     /// <summary>
     /// Adds a handler using weak semantics.
     /// </summary>

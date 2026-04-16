@@ -12,12 +12,19 @@ namespace Minimal.Mvvm;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Events (PropertyChanged, CanExecuteChanged) may be raised from any thread. Consumers are responsible for marshaling 
-/// to the appropriate context when invoking commands or handling notifications from non-UI threads.
+/// Events (PropertyChanged, CanExecuteChanged) may be raised from any thread.
+/// </para>
+/// <para>
+/// On the first event subscription, if a <see cref="SynchronizationContext"/> is present, 
+/// it is automatically captured and used to marshal subsequent event notifications.
+/// If no context is available at subscription time, events are raised on the caller's thread.
 /// </para>
 /// </remarks>
 public abstract class CommandBase : INotifyPropertyChanged
 {
+    private SynchronizationContext? _ui;
+    private SendOrPostCallback? _propertyChangedCallback;
+    private SendOrPostCallback? _canExecuteChangedCallback;
     private volatile int _executingCount;
 
     /// <summary>
@@ -81,7 +88,12 @@ public abstract class CommandBase : INotifyPropertyChanged
     /// </remarks>
     public event EventHandler? CanExecuteChanged
     {
-        add => _canExecuteChanged.AddHandler(value);
+        add
+        {
+            SynchronizationContext? current = null;
+            EnsureSynchronizationContext(ref current);
+            _canExecuteChanged.AddHandler(value);
+        }
         remove => _canExecuteChanged.RemoveHandler(value);
     }
 
@@ -93,13 +105,35 @@ public abstract class CommandBase : INotifyPropertyChanged
     /// </remarks>
     event PropertyChangedEventHandler? INotifyPropertyChanged.PropertyChanged
     {
-        add => PropertyChanged += value;
+        add
+        {
+            SynchronizationContext? current = null;
+            EnsureSynchronizationContext(ref current);
+            PropertyChanged += value;
+        }
         remove => PropertyChanged -= value;
     }
 
     #endregion
 
     #region Methods
+
+    /// <summary>
+    /// Captures the current <see cref="SynchronizationContext"/> for UI event marshaling.
+    /// Call this method from the UI thread after constructing the command if it was created on a background thread.
+    /// </summary>
+    /// <remarks>
+    /// If a context is already captured, this method does nothing.
+    /// </remarks>
+    /// <param name="current">Receives the current context snapshot.</param>
+    public void EnsureSynchronizationContext(ref SynchronizationContext? current)
+    {
+        current = SynchronizationContext.Current;
+        if (_ui is null && current is not null)
+        {
+            _ui = current;
+        }
+    }
 
     /// <summary>
     /// Creates a disposable execution scope that starts execution if possible and guarantees completion on dispose.
@@ -201,13 +235,33 @@ public abstract class CommandBase : INotifyPropertyChanged
         RaiseCanExecuteChanged();
     }
 
+    private void OnPropertyChanged(object? state)
+    {
+        PropertyChanged?.Invoke(this, (PropertyChangedEventArgs)state!);
+    }
+
     /// <summary>
     /// Raises the <see cref="INotifyPropertyChanged.PropertyChanged"/> event.
     /// </summary>
     /// <param name="e">Arguments of the event being raised.</param>
     protected void OnPropertyChanged(PropertyChangedEventArgs e)
     {
-        PropertyChanged?.Invoke(this, e);
+        var handler = PropertyChanged;
+        if (handler == null)
+        {
+            return;
+        }
+
+        SynchronizationContext? current = null;
+        EnsureSynchronizationContext(ref current);
+
+        if (_ui is not null && current != _ui)
+        {
+            _ui.Post(_propertyChangedCallback ??= OnPropertyChanged, e);
+            return;
+        }
+
+        handler(this, e);
     }
 
     /// <summary>
@@ -221,11 +275,30 @@ public abstract class CommandBase : INotifyPropertyChanged
         PropertyChanged = null;
     }
 
+    private void OnCanExecuteChanged(object? state)
+    {
+        _canExecuteChanged.Raise(this, EventArgs.Empty);
+    }
+
     /// <summary>
     /// Raises the <see cref="ICommand.CanExecuteChanged"/> event.
     /// </summary>
     public void RaiseCanExecuteChanged()
     {
+        if (_canExecuteChanged.Count == 0)
+        {
+            return;
+        }
+
+        SynchronizationContext? current = null;
+        EnsureSynchronizationContext(ref current);
+
+        if (_ui is not null && current != _ui)
+        {
+            _ui.Post(_canExecuteChangedCallback ??= OnCanExecuteChanged, null);
+            return;
+        }
+
         _canExecuteChanged.Raise(this, EventArgs.Empty);
     }
 
