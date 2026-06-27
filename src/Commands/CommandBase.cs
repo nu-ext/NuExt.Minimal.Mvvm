@@ -123,12 +123,42 @@ public abstract class CommandBase : INotifyPropertyChanged
     /// <remarks>
     /// If a context is already captured, this method does nothing. The operation is thread-safe and idempotent.
     /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void CaptureSynchronizationContext()
     {
         if (_ui is null && SynchronizationContext.Current is { } current)
         {
             Interlocked.CompareExchange(ref _ui, current, null);
         }
+    }
+
+    /// <summary>
+    /// Explicitly sets the <see cref="SynchronizationContext"/> used for marshaling event notifications.
+    /// </summary>
+    /// <param name="context">
+    /// The <see cref="SynchronizationContext"/> to use for dispatching
+    /// <see cref="PropertyChanged"/> and <see cref="CanExecuteChanged"/> events.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="context"/> is <see langword="null"/>.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// This method overrides any previously captured context.
+    /// </para>
+    /// <para>
+    /// The operation is thread-safe. Subsequent event notifications will be marshaled
+    /// through the provided context.
+    /// </para>
+    /// </remarks>
+    public void SetSynchronizationContext(SynchronizationContext context)
+    {
+#if NET6_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(context);
+#else
+        _ = context ?? throw new ArgumentNullException(nameof(context));
+#endif
+        Interlocked.Exchange(ref _ui, context);
     }
 
     /// <summary>
