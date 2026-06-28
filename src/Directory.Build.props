@@ -1,0 +1,53 @@
+<Project>
+  <!-- Package metadata -->
+  <PropertyGroup>
+    <Authors>ivanvoyager</Authors>
+    <Copyright>Copyright (c) $(Authors) $([System.DateTime]::Today.ToString(yyyy))</Copyright>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
+    <PackageIcon>logo.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/nu-ext/NuExt.Minimal.Mvvm</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!-- SourceLink -->
+  <PropertyGroup>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <!-- Optional: Publish the repository URL in the built .nupkg (in the NuSpec <Repository> element) -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <!-- Optional: Embed source files that are not tracked by the source control manager in the PDB -->
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <!-- Optional: Build symbol package (.snupkg) to distribute the PDB containing Source Link -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <!-- Sign assembly -->
+  <PropertyGroup Condition="!Exists('$(MSBuildThisFileDirectory)\..\..\MyKey.snk')">
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)\..\MyPublicKey.snk</AssemblyOriginatorKeyFile>
+    <PublicSign>true</PublicSign>
+  </PropertyGroup>
+  <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)\..\..\MyKey.snk')">
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)\..\..\MyKey.snk</AssemblyOriginatorKeyFile>
+    <PublicSign>false</PublicSign>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([System.String]::Copy('$(MSBuildProjectName)').ToUpperInvariant().EndsWith('LEGACY'))">
+    <MSBuildProjectExtensionsPath>obj-legacy\</MSBuildProjectExtensionsPath>
+    <RestoreOutputPath>obj-legacy\</RestoreOutputPath>
+    <BaseIntermediateOutputPath>obj-legacy\</BaseIntermediateOutputPath>
+    <IntermediateOutputPath>obj-legacy\$(Configuration)\</IntermediateOutputPath>
+    <OutputPath>bin-legacy\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../assets/logo.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Imports -->
+  <Import Project="$(MSBuildThisFileDirectory)\..\Directory.Build.props" />
+
+</Project>

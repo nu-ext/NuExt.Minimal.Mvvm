@@ -4,6 +4,10 @@
     <BuildType Name="Release" />
     <BuildType Name="Sources" />
   </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="README.md" />
+  </Folder>
   <Project Path="benchmarks/NuExt.Minimal.Mvvm.Benchmarks.csproj">
     <BuildType Solution="Sources|*" Project="Release" />
     <Build Solution="Sources|*" Project="false" />

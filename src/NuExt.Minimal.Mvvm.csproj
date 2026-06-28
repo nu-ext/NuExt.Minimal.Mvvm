@@ -4,18 +4,14 @@
     <TargetFrameworks>netstandard2.1;netstandard2.0;net10.0;net9.0;net8.0;net462</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release' or '$(Configuration)' == 'Sources'">true</GeneratePackageOnBuild>
     <PackageTags>nuext;minimal;mvvm;view;viewmodel;model;ui;di;command;relaycommand;asynccommand;asyncvaluecommand;multiple;concurrent;async;servicecontainer;weakevent</PackageTags>
     <Description>A minimal, high‑performance MVVM core for .NET with deterministic async command model, lightweight ViewModel base classes, and a small hierarchical service provider designed for UI applications.</Description>
-    <Version>0.7.3</Version>
     <RootNamespace>Minimal.Mvvm</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591;NETSDK1233</NoWarn>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageIcon>logo.png</PackageIcon>
-    <PackageProjectUrl>https://github.com/nu-ext/NuExt.Minimal.Mvvm</PackageProjectUrl>
     <Configurations>Debug;Release;Sources</Configurations>
     <DefaultItemExcludes>$(DefaultItemExcludes);obj-legacy\**;bin-legacy\**;README-Legacy.md</DefaultItemExcludes>
+    <VersionPrefix>0.7.4</VersionPrefix>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Sources'">
@@ -44,12 +40,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\logo.png" Pack="true" PackagePath="\" />
-    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="../README.md" Pack="true" PackagePath="README.md" />
   </ItemGroup>
 
   <Target Name="PostPack" AfterTargets="Pack" Condition="'$(Configuration)' == 'Sources'">
-    <Delete Files="$(OutputPath)\$(PackageId).$(PackageVersion).symbols.nupkg" />
+    <Delete Files="$(PackageOutputPath)\$(PackageId).$(PackageVersion).symbols.nupkg" />
   </Target>
 
 </Project>

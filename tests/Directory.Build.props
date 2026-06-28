@@ -1,0 +1,18 @@
+<Project>
+
+  <!-- Sign assembly -->
+  <PropertyGroup Condition="!Exists('$(MSBuildThisFileDirectory)\..\..\MyKey.snk')">
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)\..\MyPublicKey.snk</AssemblyOriginatorKeyFile>
+    <PublicSign>true</PublicSign>
+  </PropertyGroup>
+  <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)\..\..\MyKey.snk')">
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)\..\..\MyKey.snk</AssemblyOriginatorKeyFile>
+    <PublicSign>false</PublicSign>
+  </PropertyGroup>
+
+  <!-- Imports -->
+  <Import Project="$(MSBuildThisFileDirectory)\..\Directory.Build.props" />
+
+</Project>
