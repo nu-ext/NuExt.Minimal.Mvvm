@@ -12,7 +12,8 @@ namespace Minimal.Mvvm;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Events (PropertyChanged, CanExecuteChanged) may be raised from any thread.
+/// Events may be requested from any thread; when a synchronization context is captured, notifications
+/// are marshaled to that context.
 /// </para>
 /// <para>
 /// On the first event subscription, if a <see cref="SynchronizationContext"/> is present, 
@@ -83,9 +84,6 @@ public abstract class CommandBase : INotifyPropertyChanged
     /// <summary>
     /// Occurs when <see cref="ICommand.CanExecute(object)"/> may have changed.
     /// </summary>
-    /// <remarks>
-    /// This event may be raised from any thread.
-    /// </remarks>
     public event EventHandler? CanExecuteChanged
     {
         add
@@ -99,9 +97,6 @@ public abstract class CommandBase : INotifyPropertyChanged
     private event PropertyChangedEventHandler? PropertyChanged;
 
     /// <inheritdoc/>
-    /// <remarks>
-    /// This event may be raised from any thread.
-    /// </remarks>
     event PropertyChangedEventHandler? INotifyPropertyChanged.PropertyChanged
     {
         add
@@ -279,9 +274,10 @@ public abstract class CommandBase : INotifyPropertyChanged
         }
 
         CaptureSynchronizationContext();
-        if (_ui is not null && !_ui.CheckAccess())
+        var ctx = _ui;
+        if (ctx is not null && !ctx.CheckAccess())
         {
-            _ui.Post(_propertyChangedCallback ??= OnPropertyChanged, e);
+            ctx.Post(_propertyChangedCallback ??= OnPropertyChanged, e);
             return;
         }
 
@@ -315,9 +311,10 @@ public abstract class CommandBase : INotifyPropertyChanged
         }
 
         CaptureSynchronizationContext();
-        if (_ui is not null && !_ui.CheckAccess())
+        var ctx = _ui;
+        if (ctx is not null && !ctx.CheckAccess())
         {
-            _ui.Post(_canExecuteChangedCallback ??= OnCanExecuteChanged, null);
+            ctx.Post(_canExecuteChangedCallback ??= OnCanExecuteChanged, null);
             return;
         }
 

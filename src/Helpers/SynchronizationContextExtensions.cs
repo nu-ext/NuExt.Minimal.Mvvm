@@ -4,32 +4,57 @@ using System.Threading;
 
 namespace Minimal.Mvvm;
 
-public static class SynchronizationContextExtensions
+internal static class SynchronizationContextExtensions
 {
-    private static readonly ConditionalWeakTable<Type, Func<SynchronizationContext, Func<bool>>> s_checkAccessFactories = new();
+    private static readonly ConditionalWeakTable<Type, Func<SynchronizationContext, bool>> s_checkAccessDelegates = new();
 
-    public static bool CheckAccess(this SynchronizationContext sc)
+    internal static bool CheckAccess(this SynchronizationContext sc)
     {
-        if (s_checkAccessFactories.TryGetValue(sc.GetType(), out var factory))
+#if NET6_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(sc);
+#else
+        _ = sc ?? throw new ArgumentNullException(nameof(sc));
+#endif
+        if (ReferenceEquals(SynchronizationContext.Current, sc))
         {
-            return factory(sc)();
+            return true;
         }
 
-        return ReferenceEquals(SynchronizationContext.Current, sc);
+        return s_checkAccessDelegates.TryGetValue(sc.GetType(), out var checkAccess) && checkAccess(sc);
     }
 
-    internal static void RegisterCheckAccessFactory(Type type, Func<SynchronizationContext, Func<bool>> factory)
+    internal static void RegisterCheckAccessDelegate(Type type, Func<SynchronizationContext, bool> checkAccess)
     {
-#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-        s_checkAccessFactories.AddOrUpdate(type, factory);
+#if NET6_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentNullException.ThrowIfNull(checkAccess);
 #else
-        s_checkAccessFactories.Remove(type);
-        s_checkAccessFactories.Add(type, factory);
+        _ = type ?? throw new ArgumentNullException(nameof(type));
+        _ = checkAccess ?? throw new ArgumentNullException(nameof(checkAccess));
+#endif
+        if (!typeof(SynchronizationContext).IsAssignableFrom(type))
+        {
+            throw new ArgumentException($"The type must derive from {typeof(SynchronizationContext).FullName}.", nameof(type));
+        }
+
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+        s_checkAccessDelegates.AddOrUpdate(type, checkAccess);
+#else
+        lock (s_checkAccessDelegates)
+        {
+            s_checkAccessDelegates.Remove(type);
+            s_checkAccessDelegates.Add(type, checkAccess);
+        }
 #endif
     }
 
-    internal static bool UnregisterCheckAccessFactory(Type type)
+    internal static bool UnregisterCheckAccessDelegate(Type type)
     {
-        return s_checkAccessFactories.Remove(type);
+#if NET6_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(type);
+#else
+        _ = type ?? throw new ArgumentNullException(nameof(type));
+#endif
+        return s_checkAccessDelegates.Remove(type);
     }
 }

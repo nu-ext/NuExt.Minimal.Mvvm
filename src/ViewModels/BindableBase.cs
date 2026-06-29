@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Minimal.Mvvm;
 
@@ -11,8 +12,20 @@ namespace Minimal.Mvvm;
 /// A base class that implements <see cref="INotifyPropertyChanged"/> to simplify models.
 /// This class provides support for notifying clients that a property value has changed, and supports the cancellation of property value changes.
 /// </summary>
+/// <remarks>
+/// <para>
+/// If a <see cref="SynchronizationContext"/> is configured, <see cref="PropertyChanged"/>
+/// notifications raised from another thread are posted to that context.
+/// </para>
+/// <para>
+/// If no context is configured, <see cref="PropertyChanged"/> is raised on the caller's thread.
+/// </para>
+/// </remarks>
 public abstract class BindableBase : INotifyPropertyChanged
 {
+    private volatile SynchronizationContext? _ui;
+    private SendOrPostCallback? _propertyChangedCallback;
+
     #region Events
 
     /// <summary>
@@ -25,6 +38,48 @@ public abstract class BindableBase : INotifyPropertyChanged
     #region Methods
 
     /// <summary>
+    /// Captures the current <see cref="SynchronizationContext"/> for UI event marshaling.
+    /// Call this method from the UI thread after constructing the object if it was created on a background thread.
+    /// </summary>
+    /// <remarks>
+    /// If a context is already configured, this method does nothing. The operation is thread-safe and idempotent.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void CaptureSynchronizationContext()
+    {
+        if (_ui is null && SynchronizationContext.Current is { } current)
+        {
+            Interlocked.CompareExchange(ref _ui, current, null);
+        }
+    }
+
+    /// <summary>
+    /// Explicitly sets the <see cref="SynchronizationContext"/> used for marshaling event notifications.
+    /// </summary>
+    /// <param name="context">
+    /// The <see cref="SynchronizationContext"/> to use for dispatching <see cref="PropertyChanged"/> event.
+    /// </param>
+    /// <exception cref="ArgumentNullException"> <paramref name="context"/> is <see langword="null"/>. </exception>
+    /// <remarks>
+    /// <para>
+    /// This method overrides any previously configured context.
+    /// </para>
+    /// <para>
+    /// The operation is thread-safe. Subsequent event notifications will be marshaled
+    /// through the provided context.
+    /// </para>
+    /// </remarks>
+    public void SetSynchronizationContext(SynchronizationContext context)
+    {
+#if NET6_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(context);
+#else
+        _ = context ?? throw new ArgumentNullException(nameof(context));
+#endif
+        Interlocked.Exchange(ref _ui, context);
+    }
+
+    /// <summary>
     /// Removes all subscribers from the <see cref="PropertyChanged"/> event.
     /// </summary>
     [DebuggerHidden]
@@ -35,24 +90,54 @@ public abstract class BindableBase : INotifyPropertyChanged
         PropertyChanged = null;
     }
 
+    private void OnPropertyChanged(object? state)
+    {
+        PropertyChanged?.Invoke(this, (PropertyChangedEventArgs)state!);
+    }
+
     /// <summary>
     /// Raises the <see cref="PropertyChanged"/> event (per <see cref="INotifyPropertyChanged" />).
     /// </summary>
     /// <param name="e">The event data containing the name of the property that changed.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected void OnPropertyChanged(PropertyChangedEventArgs e)
     {
-        PropertyChanged?.Invoke(this, e);
+        var handler = PropertyChanged;
+        if (handler == null)
+        {
+            return;
+        }
+
+        var ctx = _ui;
+        if (ctx is not null && !ctx.CheckAccess())
+        {
+            ctx.Post(_propertyChangedCallback ??= OnPropertyChanged, e);
+            return;
+        }
+
+        handler(this, e);
     }
 
     /// <summary>
     /// Raises the <see cref="PropertyChanged"/> event for a specified property.
     /// </summary>
     /// <param name="propertyName">The name of the property that changed.</param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        PropertyChanged?.Invoke(this, EventArgsCache.Get(propertyName));
+        var handler = PropertyChanged;
+        if (handler == null)
+        {
+            return;
+        }
+
+        var args = EventArgsCache.Get(propertyName);
+        var ctx = _ui;
+        if (ctx is not null && !ctx.CheckAccess())
+        {
+            ctx.Post(_propertyChangedCallback ??= OnPropertyChanged, args);
+            return;
+        }
+
+        handler(this, args);
     }
 
     /// <summary>
