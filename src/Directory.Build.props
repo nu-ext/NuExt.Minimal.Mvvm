@@ -2,6 +2,7 @@
   <!-- Package metadata -->
   <PropertyGroup>
     <Authors>ivanvoyager</Authors>
+    <Company>ivanvoyager</Company>
     <Copyright>Copyright (c) $(Authors) $([System.DateTime]::Today.ToString(yyyy))</Copyright>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
