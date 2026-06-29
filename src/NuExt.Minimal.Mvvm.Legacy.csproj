@@ -11,7 +11,7 @@
     <NoWarn>$(NoWarn);1591;NETSDK1233</NoWarn>
     <EnableDefaultItems>false</EnableDefaultItems>
     <DefineConstants>$(DefineConstants);NUEXT_ENABLE_VALUETASK</DefineConstants>
-    <VersionPrefix>0.7.4</VersionPrefix>
+    <VersionPrefix>0.7.5</VersionPrefix>
   </PropertyGroup>
 
   <ItemGroup>
