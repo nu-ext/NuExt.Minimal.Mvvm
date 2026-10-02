@@ -339,8 +339,7 @@ public class AsyncCommandBaseTests
 
         // Act
         cts.CancelAfter(50);
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await command.ExecuteAsync(42, cts.Token));
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await command.ExecuteAsync(42, cts.Token));
 
         // Assert
         Assert.That(cancelled, Is.True);

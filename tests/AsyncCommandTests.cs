@@ -326,7 +326,7 @@ internal class AsyncCommandTests
         cts.Cancel();
 
         // Assert
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await executeTask);
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await executeTask);
         Assert.That(wasCancelled, Is.True);
     }
 
@@ -516,7 +516,7 @@ internal class AsyncCommandTests
     }
 
     [Test]
-    public void NonGenericExecuteAsync_WithObjectParameter_Works()
+    public async Task NonGenericExecuteAsync_WithObjectParameter_Works()
     {
         // Arrange
         var executed = false;
@@ -527,12 +527,12 @@ internal class AsyncCommandTests
         });
 
         // Act & Assert
-        Assert.DoesNotThrowAsync(async () => await ((IAsyncCommand)command).ExecuteAsync(null));
+        await Assert.DoesNotThrowAsync(async () => await ((IAsyncCommand)command).ExecuteAsync(null));
         Assert.That(executed, Is.True);
     }
 
     [Test]
-    public void NonGenericExecuteAsync_WithCancellationToken_Works()
+    public async Task NonGenericExecuteAsync_WithCancellationToken_Works()
     {
         // Arrange
         var executed = false;
@@ -543,8 +543,7 @@ internal class AsyncCommandTests
         });
 
         // Act & Assert
-        Assert.DoesNotThrowAsync(async () =>
-            await ((IAsyncCommand)command).ExecuteAsync(null, CancellationToken.None));
+        await Assert.DoesNotThrowAsync(async () => await ((IAsyncCommand)command).ExecuteAsync(null, CancellationToken.None));
         Assert.That(executed, Is.True);
     }
 
@@ -713,7 +712,7 @@ internal class AsyncCommandTests
         cts.Cancel();
 
         // Assert
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await executeTask);
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await executeTask);
         Assert.That(wasCancelled, Is.True);
     }
 

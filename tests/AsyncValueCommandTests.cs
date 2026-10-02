@@ -89,7 +89,7 @@ public class AsyncValueCommandTests
         var executeTask = command.ExecuteAsync("test", cts.Token);
 
         // Assert
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await executeTask);
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await executeTask);
         Assert.That(wasCancelled, Is.True);
     }
 
@@ -246,7 +246,7 @@ public class AsyncValueCommandTests
         var executeTask = command.ExecuteAsync(null, cts.Token);
 
         // Assert
-        Assert.ThrowsAsync<TaskCanceledException>(async () => await executeTask);
+        await Assert.ThrowsAsync<TaskCanceledException>(async () => await executeTask);
         Assert.That(wasCancelled, Is.True);
     }
 
@@ -292,7 +292,7 @@ public class AsyncValueCommandTests
     }
 
     [Test]
-    public void AsyncValueCommand_Execute_WithCanceledValueTask_ThrowsOperationCanceledException()
+    public async Task AsyncValueCommand_Execute_WithCanceledValueTask_ThrowsOperationCanceledException()
     {
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -300,14 +300,14 @@ public class AsyncValueCommandTests
         var command = new AsyncValueCommand(() => ValueTask.FromCanceled(cts.Token));
 
         // Act & Assert - ExecuteAsync should throw OperationCanceledException
-        var exception = Assert.ThrowsAsync<TaskCanceledException>(
+        var exception = await Assert.ThrowsAsync<TaskCanceledException>(
             async () => await command.ExecuteAsync(null, CancellationToken.None));
 
         Assert.That(exception, Is.Not.Null);
     }
 
     [Test]
-    public void AsyncValueCommand_Execute_WithCanceledValueTask_AndCancellationToken_ThrowOperationCanceledException()
+    public async Task AsyncValueCommand_Execute_WithCanceledValueTask_AndCancellationToken_ThrowOperationCanceledException()
     {
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -315,7 +315,7 @@ public class AsyncValueCommandTests
         var command = new AsyncValueCommand(() => ValueTask.FromCanceled(cts.Token));
 
         // Act & Assert
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(
+        var exception = await Assert.ThrowsAsync<OperationCanceledException>(
             async () => await command.ExecuteAsync(null, cts.Token));
 
         Assert.That(exception, Is.Not.Null);
@@ -336,7 +336,7 @@ public class AsyncValueCommandTests
         });
 
         // Act & Assert
-        var exception = Assert.ThrowsAsync<OperationCanceledException>(
+        var exception = await Assert.ThrowsAsync<OperationCanceledException>(
             async () => await command.ExecuteAsync(null, cts.Token));
 
         using (Assert.EnterMultipleScope())
@@ -358,7 +358,7 @@ public class AsyncValueCommandTests
         });
 
         // Act & Assert
-        var exception = Assert.ThrowsAsync<TaskCanceledException>(
+        var exception = await Assert.ThrowsAsync<TaskCanceledException>(
             async () => await command.ExecuteAsync(null, cts.Token));
 
         Assert.That(exception, Is.Not.Null);

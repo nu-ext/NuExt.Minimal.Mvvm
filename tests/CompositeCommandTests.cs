@@ -204,7 +204,7 @@ public class CompositeCommandTests
     }
 
     [Test]
-    public void Execute_Exceptions_StopAndPropagate()
+    public async Task Execute_Exceptions_StopAndPropagate()
     {
         var a = new RelayCommand(() => { });
         var boom = new RelayCommand(() => throw new InvalidOperationException("boom"));
@@ -212,7 +212,7 @@ public class CompositeCommandTests
 
         var sut = new CompositeCommand(a, boom, c) { CanExecuteMode = CanExecuteMode.All };
 
-        var ex = Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
             await ((IAsyncCommand)sut).ExecuteAsync(null, CancellationToken.None);
         });
@@ -221,7 +221,7 @@ public class CompositeCommandTests
     }
 
     [Test]
-    public void Execute_Cancellation_BetweenCommands()
+    public async Task Execute_Cancellation_BetweenCommands()
     {
         var cts = new CancellationTokenSource();
         var log = new List<string>();
@@ -242,7 +242,7 @@ public class CompositeCommandTests
 
         var sut = new CompositeCommand(first, second) { CanExecuteMode = CanExecuteMode.All };
 
-        Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
         {
             await ((IAsyncCommand)sut).ExecuteAsync(null, cts.Token);
         });
