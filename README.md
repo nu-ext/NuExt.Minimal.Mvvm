@@ -1,8 +1,9 @@
 # NuExt.Minimal.Mvvm
 
-`NuExt.Minimal.Mvvm` is a **high‑performance, dependency‑free** MVVM core for .NET focused on **robust async flows** and **deterministic command execution**. It provides a **minimal, clear API** with Bindable/ViewModel base types, a self‑validating command model (Relay/Async/Composite), and a lightweight service provider.
+`NuExt.Minimal.Mvvm` is a **high-performance, dependency-free** MVVM core for .NET focused on **robust async flows** and **deterministic command execution**. It provides a **minimal, clear API** with Bindable/ViewModel base types, a self-validating command model (Relay/Async/Composite), and a lightweight service provider.
 
 [![NuGet](https://img.shields.io/nuget/v/NuExt.Minimal.Mvvm.svg)](https://www.nuget.org/packages/NuExt.Minimal.Mvvm)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/nu-ext/NuExt.Minimal.Mvvm)
 [![Build](https://github.com/nu-ext/NuExt.Minimal.Mvvm/actions/workflows/ci.yml/badge.svg)](https://github.com/nu-ext/NuExt.Minimal.Mvvm/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/nu-ext/NuExt.Minimal.Mvvm?label=license)](https://github.com/nu-ext/NuExt.Minimal.Mvvm/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/nuget/dt/NuExt.Minimal.Mvvm.svg)](https://www.nuget.org/packages/NuExt.Minimal.Mvvm)
@@ -12,23 +13,23 @@
 - **Core**
   - `Minimal.Mvvm.BindableBase` — lightweight `INotifyPropertyChanged` base.
   - `Minimal.Mvvm.ViewModelBase` — lean ViewModel foundation with simple service access.
-  - `Minimal.Mvvm.WeakEvent` — lightweight weak‑event storage for `(object sender, TEventArgs)` handlers.
+  - `Minimal.Mvvm.WeakEvent` — lightweight weak-event storage for `(object sender, TEventArgs)` handlers.
 
-- **Command model (self‑validating)**
+- **Command model (self-validating)**
   - All commands (`RelayCommand`, `RelayCommand<T>`, `AsyncCommand`, `AsyncCommand<T>`, `AsyncValueCommand`, `AsyncValueCommand<T>`, `CompositeCommand`) validate their state internally:
-    if `CanExecute(parameter)` is `false`, `Execute(parameter)` does nothing. This guarantees consistent behavior for both UI‑bound and programmatic calls.
+    if `CanExecute(parameter)` is `false`, `Execute(parameter)` does nothing. This guarantees consistent behavior for both UI-bound and programmatic calls.
 
   **Semantics**
   - `AsyncCommand` provides cancellation and reentrancy control (`AllowConcurrentExecution`, default: **false**).
   - `AsyncValueCommand` / `AsyncValueCommand<T>` are `ValueTask`-based async commands.
-  - Exceptions bubble to `UnhandledException` (per‑command) first; if not handled, to `AsyncCommand.GlobalUnhandledException`.
-  - `Cancel()` signals the current operation via `CancellationToken`; if nothing is executing, it’s a no‑op.
+  - Exceptions bubble to `UnhandledException` (per-command) first; if not handled, to `AsyncCommand.GlobalUnhandledException`.
+  - `Cancel()` signals the current operation via `CancellationToken`; if nothing is executing, it’s a no-op.
 
 - **Command implementations**
-  - `RelayCommand` / `RelayCommand<T>` — classic **synchronous** delegate‑based commands (can be invoked concurrently from multiple threads).
+  - `RelayCommand` / `RelayCommand<T>` — classic **synchronous** delegate-based commands (can be invoked concurrently from multiple threads).
   - `AsyncCommand` / `AsyncCommand<T>` — **asynchronous** commands with predictable error propagation and cancellation.
-  - `AsyncValueCommand` / `AsyncValueCommand<T>` — **asynchronous** commands built on `ValueTask` for allocation‑sensitive scenarios.
-  - `CompositeCommand` — aggregates multiple commands and executes them **sequentially**; awaits `ExecuteAsync(...)` and calls `Execute(...)` for non‑async commands.
+  - `AsyncValueCommand` / `AsyncValueCommand<T>` — **asynchronous** commands built on `ValueTask` for allocation-sensitive scenarios.
+  - `CompositeCommand` — aggregates multiple commands and executes them **sequentially**; awaits `ExecuteAsync(...)` and calls `Execute(...)` for non-async commands.
 
 - **Service Provider Integration**
   - `Minimal.Mvvm.ServiceProvider`: lightweight service registration/resolution in UI scenarios.
@@ -42,12 +43,12 @@
 
 ## Integrations & Companion Packages
 
-- **Building WPF?** Use [**NuExt.Minimal.Mvvm.Wpf**](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.Wpf) for document services, async dialogs, explicit view composition, and dispatcher‑safe APIs.
+- **Building WPF?** Use [**NuExt.Minimal.Mvvm.Wpf**](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.Wpf) for document services, async dialogs, explicit view composition, and dispatcher-safe APIs.
 - **MahApps.Metro integration:** [NuExt.Minimal.Mvvm.MahApps.Metro](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.MahApps.Metro)
 
 ### Recommended Companion
 
-Use the [`NuExt.Minimal.Mvvm.SourceGenerator`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.SourceGenerator) for compile‑time boilerplate generation in ViewModels.
+Use the [`NuExt.Minimal.Mvvm.SourceGenerator`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.SourceGenerator) for compile-time boilerplate generation in ViewModels.
 
 ## Quick examples
 
@@ -86,7 +87,7 @@ public class SearchViewModel : ViewModelBase
 }
 ```
 
-### 2) Two‑tier exception handling
+### 2) Two-tier exception handling
 
 ```csharp
 public class DataViewModel : ViewModelBase
@@ -183,7 +184,7 @@ public sealed class MyViewModel : ViewModelBase
 > - **Transient** = new instance per resolution (not cached).
 > - **Cleanup**: call `Services.CleanupAsync(...)` during uninitialization if you need deterministic disposal of local singletons.
 
-### 5) `AsyncValueCommand` for allocation‑sensitive hot paths
+### 5) `AsyncValueCommand` for allocation-sensitive hot paths
 
 ```csharp
 public sealed class ValidateViewModel : ViewModelBase
@@ -214,24 +215,24 @@ public sealed class ValidateViewModel : ViewModelBase
 }
 ```
 
-## UI‑focused DI: how it compares (at a glance)
+## UI-focused DI: how it compares (at a glance)
 
 - Minimal, **explicit** registrations (parameterless ctor or factory).
 - **Hierarchical** resolution that matches ViewModel trees.
-- No hidden conventions, no auto‑discovery; behavior is deterministic.
-- Easy to **migrate** from other DI tools for UI: register what you need locally per ViewModel, use a fallback container for app‑level services or unit testing, and rely on parent resolution for context‑specific overrides.
+- No hidden conventions, no auto-discovery; behavior is deterministic.
+- Easy to **migrate** from other DI tools for UI: register what you need locally per ViewModel, use a fallback container for app-level services or unit testing, and rely on parent resolution for context-specific overrides.
 
 ## Migrating from other DI containers (UI context)
 
 - **Application services:** register into `ServiceProvider.Default` at startup.
-- **Per‑VM overrides:** register in `ViewModelBase.Services` (scope = the ViewModel).
+- **Per-VM overrides:** register in `ViewModelBase.Services` (scope = the ViewModel).
 - **External DI as parent:** wrap your existing container as a parent for this provider:
   `var app = new ServiceProvider((System.IServiceProvider)existing);`
   Then either **set it as application scope** (`ServiceProvider.Default = app`) or **pass as a ViewModel fallback** (`: base(app)`).
-- **Named registrations:** use `name` overloads to keep side‑by‑side implementations.
+- **Named registrations:** use `name` overloads to keep side-by-side implementations.
 - **Concept mapping:**  
   - App “Singleton” → `ServiceProvider.Default.RegisterService<T>(...)`  
-  - Per‑View/ViewModel “Scoped” → `Services.RegisterService<T>(...)`  
+  - Per-View/ViewModel “Scoped” → `Services.RegisterService<T>(...)`  
   - “Transient” → `RegisterTransient<T>(...)`
 
 ## WPF + `[UseCommandManager]` example
@@ -303,27 +304,27 @@ the generator will create the command property and wire WPF requery in the prope
 ```
 #### Notes
 
-- `[UseCommandManager]` is **WPF‑only**; Avalonia/WinUI don’t have `CommandManager`.
+- `[UseCommandManager]` is **WPF-only**; Avalonia/WinUI don’t have `CommandManager`.
 - If you still need a manual requery (rare), call `CommandManager.InvalidateRequerySuggested()`.
 
 ## ValueTask commands on legacy targets
 
 You have two options to enable `AsyncValueCommand*` on legacy TFMs:
 
-- **Recommended**: install the binary add‑on  
+- **Recommended**: install the binary add-on  
   ```sh
   dotnet add package NuExt.Minimal.Mvvm.Legacy
   ```
   This adds `AsyncValueCommand*` for `net462`/`netstandard2.0` and pulls `System.Threading.Tasks.Extensions` **only** on legacy.
 
-- **Sources‑only workflow**: opt‑in via `.Sources` and `NUEXT_ENABLE_VALUETASK` + `System.Threading.Tasks.Extensions`.
+- **Sources-only workflow**: opt-in via `.Sources` and `NUEXT_ENABLE_VALUETASK` + `System.Threading.Tasks.Extensions`.
 
 ## FAQ
 **Q: How is this different from CommunityToolkit.Mvvm?**  
-**A**: `NuExt.Minimal.Mvvm` focuses on a *smaller, deterministic core* with strict command semantics (no‑op `Execute` when `CanExecute` is false), explicit async error pipeline (local → global), and no external dependencies. CommunityToolkit.Mvvm provides a broader toolbox (messaging, DI helpers, attributes, etc.). If you need a minimal, performance‑oriented core with predictable async/command behavior, `NuExt.Minimal.Mvvm` is a good fit; if you want a feature‑rich toolkit, CommunityToolkit.Mvvm may be preferable.
+**A**: `NuExt.Minimal.Mvvm` focuses on a *smaller, deterministic core* with strict command semantics (no-op `Execute` when `CanExecute` is false), explicit async error pipeline (local → global), and no external dependencies. CommunityToolkit.Mvvm provides a broader toolbox (messaging, DI helpers, attributes, etc.). If you need a minimal, performance-oriented core with predictable async/command behavior, `NuExt.Minimal.Mvvm` is a good fit; if you want a feature-rich toolkit, CommunityToolkit.Mvvm may be preferable.
 
 **Q: Do I have to wire WPF CommandManager.RequerySuggested myself?**  
-**A**: No. With the source generator, mark the command with `[UseCommandManager]`, and the generated property will auto‑subscribe/unsubscribe for requery.
+**A**: No. With the source generator, mark the command with `[UseCommandManager]`, and the generated property will auto-subscribe/unsubscribe for requery.
 
 **Q: What is the command error flow?**  
 **A**: Exceptions raised during `AsyncCommand` execution are first published to `UnhandledException`; if not handled there, they flow to `AsyncCommand.GlobalUnhandledException`.
@@ -331,12 +332,12 @@ You have two options to enable `AsyncValueCommand*` on legacy TFMs:
 **Q: How do I integrate my existing DI container?**
 **A:** Wrap it as a parent via `new ServiceProvider(System.IServiceProvider parent)`.  
 Use it in one of two ways:
-- **Application scope:** set `ServiceProvider.Default = new ServiceProvider(parent)`, so all ViewModels can resolve app‑wide services via the default provider.
-- **Per‑VM fallback:** pass it to specific ViewModels (`: base(fallback)`) when you need a VM to resolve “up” into the external container while still allowing local overrides in that VM scope.
+- **Application scope:** set `ServiceProvider.Default = new ServiceProvider(parent)`, so all ViewModels can resolve app-wide services via the default provider.
+- **Per-VM fallback:** pass it to specific ViewModels (`: base(fallback)`) when you need a VM to resolve “up” into the external container while still allowing local overrides in that VM scope.
 
 **Q: Where are scoped services?**
-**A:** A **ViewModel is the scope**. Register app‑wide singletons in `ServiceProvider.Default` (application scope).  
-Register **per‑VM overrides** in `ViewModelBase.Services` (the VM’s local scope). Transients are created per resolution.
+**A:** A **ViewModel is the scope**. Register app-wide singletons in `ServiceProvider.Default` (application scope).  
+Register **per-VM overrides** in `ViewModelBase.Services` (the VM’s local scope). Transients are created per resolution.
 
 **Q: What is the “application scope”?**  
 **A:** `ServiceProvider.Default`. Register app-wide singletons there; ViewModels resolve with the order **local → fallback → parent → default**.
@@ -358,7 +359,7 @@ Or via Visual Studio:
 ### Source Code Package
 
 A source package is also available: [`NuExt.Minimal.Mvvm.Sources`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.Sources). This package allows you to embed the entire framework directly into your application, enabling easier source code exploring and debugging.
-See [**ValueTask commands on legacy targets**](#valuetask-commands-on-legacy-targets) for legacy opt‑in details.
+See [**ValueTask commands on legacy targets**](#valuetask-commands-on-legacy-targets) for legacy opt-in details.
 
 To install the source code package, use the following command:
 
@@ -372,13 +373,13 @@ Or via Visual Studio:
 2. Search for `NuExt.Minimal.Mvvm.Sources`.
 3. Click "Install".
 
-### Compatibility
+## Compatibility
 
 - **.NET Standard 2.0+, .NET 8/9/10, .NET Framework 4.6.2+**
 - **Language**: C# 12+
 
 > **Legacy only:** to use `AsyncValueCommand*` on **.NET Framework 4.6.2** / **.NET Standard 2.0**, see
-> [**ValueTask commands on legacy targets**](#valuetask-commands-on-legacy-targets) (binary add‑on or `.Sources` opt‑in with `NUEXT_ENABLE_VALUETASK` and `System.Threading.Tasks.Extensions`).
+> [**ValueTask commands on legacy targets**](#valuetask-commands-on-legacy-targets) (binary add-on or `.Sources` opt-in with `NUEXT_ENABLE_VALUETASK` and `System.Threading.Tasks.Extensions`).
 
 ## Ecosystem
 
