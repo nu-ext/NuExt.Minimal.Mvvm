@@ -486,7 +486,7 @@ public abstract class ViewModelBase : BindableBase, IAsyncInitializable, IParent
             return cancellationToken.IsCancellationRequested ? Task.FromCanceled(cancellationToken) : Task.CompletedTask;
         }
         return cancellationToken.IsCancellationRequested ? Task.FromCanceled(cancellationToken)
-            : Services.CleanupAsync(static s => { (s as IDisposable)?.Dispose(); return Task.CompletedTask; }, false);
+            : Services.CleanupAsync(static s => { (s as IDisposable)?.Dispose(); return Task.CompletedTask; }, continueOnCapturedContext: false);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

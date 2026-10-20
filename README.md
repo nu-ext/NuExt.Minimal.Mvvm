@@ -11,8 +11,9 @@
 ## Features
 
 - **Core**
-  - `Minimal.Mvvm.BindableBase` — lightweight `INotifyPropertyChanged` base.
-  - `Minimal.Mvvm.ViewModelBase` — lean ViewModel foundation with simple service access.
+  - `Minimal.Mvvm.BindableBase` — lightweight, UI-aware `INotifyPropertyChanged` base with cached event arguments and allocation-free generated notification paths.
+  - `Minimal.Mvvm.ViewModelBase` — a ViewModel foundation with parent-aware service resolution, a lazily created local service scope, parameter support, and serialized asynchronous lifecycle.
+  - Property notifications are marshaled through an explicitly configured or captured `SynchronizationContext`; otherwise, they are raised on the caller's thread.
   - `Minimal.Mvvm.WeakEvent` — lightweight weak-event storage for `(object sender, TEventArgs)` handlers.
 
 - **Command model (self-validating)**
@@ -20,10 +21,10 @@
     if `CanExecute(parameter)` is `false`, `Execute(parameter)` does nothing. This guarantees consistent behavior for both UI-bound and programmatic calls.
 
   **Semantics**
-  - `AsyncCommand` provides cancellation and reentrancy control (`AllowConcurrentExecution`, default: **false**).
-  - `AsyncValueCommand` / `AsyncValueCommand<T>` are `ValueTask`-based async commands.
+  - Async commands provide cancellation and reentrancy control (`AllowConcurrentExecution`, default: **false**).
+  - `AsyncValueCommand` / `AsyncValueCommand<T>` provide the same execution semantics using `ValueTask`.
   - Exceptions bubble to `UnhandledException` (per-command) first; if not handled, to `AsyncCommand.GlobalUnhandledException`.
-  - `Cancel()` signals the current operation via `CancellationToken`; if nothing is executing, it’s a no-op.
+  - `Cancel()` signals all active executions through their individual `CancellationToken` instances; if nothing is executing, it’s a no-op.
 
 - **Command implementations**
   - `RelayCommand` / `RelayCommand<T>` — classic **synchronous** delegate-based commands (can be invoked concurrently from multiple threads).
@@ -39,9 +40,17 @@
   - Lifetime basics for UI apps:
     - **Singleton (lazy)** — stored per container, created on first resolution.
     - **Transient** — new instance per resolution, not cached.
-    - **Scope** — a **ViewModel** acts as a scope; `ViewModelBase.Services` is created lazily and disposed via your cleanup.
+    - **Scope** — a **ViewModel** acts as a scope; `ViewModelBase.Services` is created lazily, and created local singletons are released during uninitialization.
     - **Application scope**
       - `ServiceProvider.Default` acts as the **application-level** container. Prefer registering app-wide services there; ViewModels may register local overrides in their own scope.
+
+## Why NuExt.Minimal.Mvvm?
+
+`NuExt.Minimal.Mvvm` is designed for UI applications that need predictable asynchronous behavior without adopting a full application framework. Commands validate their own execution state, track concurrent invocations independently, expose explicit cancellation and error handling, and support deterministic asynchronous composition.
+
+ViewModels combine UI-aware property notifications with serialized asynchronous lifecycle and hierarchical service resolution. Each ViewModel can act as a lazy local scope, inherit context-specific services from its parent, and fall back to application-level services without hiding mandatory dependencies that belong in constructors.
+
+The framework keeps runtime behavior explicit and performance-oriented: notification arguments are cached, frequent command and resolution paths avoid unnecessary allocations, service registrations remain mutable, and factory-based composition is trim- and AOT-friendly.
 
 ## Integrations & Companion Packages
 
@@ -159,32 +168,36 @@ public partial class ProductViewModel : ViewModelBase
 
 ### 4) Service registration for ViewModels
 
+Register application-wide services once at the composition root:
+
+```csharp
+ServiceProvider.Default.RegisterService<IMyService, MyService>();
+```
+
 ```csharp
 public sealed class MyViewModel : ViewModelBase
 {
     public MyViewModel(IServiceContainer fallback) : base(fallback)
     {
-        // Application scope (global): ServiceProvider.Default for app-level services.
-        ServiceProvider.Default.RegisterService<IMyService, MyService>();
         // ViewModel scope (local container); override per-VM if needed.
-        Services.RegisterService<IMyService, MyVmSpecificService>();  // singleton
-        Services.RegisterTransient<INotification>(() => new Toast()); // transient
+        Services.RegisterService<IMyService, MyVmSpecificService>();
+        Services.RegisterTransient<INotification>(() => new Toast());
     }
 
     public void Use()
     {
         // Resolution order: local → fallback → parent → default
-        var svc = Services.GetService<IMyService>();
-        var toast = Services.GetService<INotification>();
+        var service = GetService<IMyService>();
+        var notification = GetService<INotification>();
     }
 }
 ```
 > **Notes (UI lifetimes)**:  
-> - **Scope** = the ViewModel instance (local container). Local services live as long as the VM does.
+> - **Scope** = the ViewModel instance. Local services are stored in its lazy container and released during cleanup.
 > - **Application scope** = `ServiceProvider.Default`.
 > - **Singleton (lazy)** = created on first successful resolution and cached in the owning container.
 > - **Transient** = new instance per resolution (not cached).
-> - **Cleanup**: call `Services.CleanupAsync(...)` during uninitialization if you need deterministic disposal of local singletons.
+> - **Cleanup**: default uninitialization cleans up created local singletons; override `UninitializeAsyncCore(...)` to customize cleanup.
 
 ### 5) `AsyncValueCommand` for allocation-sensitive hot paths
 
@@ -195,7 +208,7 @@ public sealed class ValidateViewModel : ViewModelBase
 
     public ValidateViewModel()
     {
-        // Often completes synchronously; ValueTask avoids allocations in that case.
+        // Often completes synchronously; ValueTask can avoid a Task allocation in that case.
         ValidateCommand = new AsyncValueCommand(ValidateAsync);
     }
 
@@ -216,13 +229,6 @@ public sealed class ValidateViewModel : ViewModelBase
     }
 }
 ```
-
-## UI-focused DI: how it compares (at a glance)
-
-- Minimal, **explicit** registrations (parameterless ctor or factory).
-- **Hierarchical** resolution that matches ViewModel trees.
-- No hidden conventions, no auto-discovery; behavior is deterministic.
-- Easy to **migrate** from other DI tools for UI: register what you need locally per ViewModel, use a fallback container for app-level services or unit testing, and rely on parent resolution for context-specific overrides.
 
 ## Migrating from other DI containers (UI context)
 
@@ -322,14 +328,18 @@ You have two options to enable `AsyncValueCommand*` on legacy TFMs:
 - **Sources-only workflow**: opt-in via `.Sources` and `NUEXT_ENABLE_VALUETASK` + `System.Threading.Tasks.Extensions`.
 
 ## FAQ
+
 **Q: How is this different from CommunityToolkit.Mvvm?**  
-**A**: `NuExt.Minimal.Mvvm` focuses on a *smaller, deterministic core* with strict command semantics (no-op `Execute` when `CanExecute` is false), explicit async error pipeline (local → global), and no external dependencies. CommunityToolkit.Mvvm provides a broader toolbox (messaging, DI helpers, attributes, etc.). If you need a minimal, performance-oriented core with predictable async/command behavior, `NuExt.Minimal.Mvvm` is a good fit; if you want a feature-rich toolkit, CommunityToolkit.Mvvm may be preferable.
+**A:** `NuExt.Minimal.Mvvm` focuses on deterministic command execution, independently tracked concurrent operations, serialized ViewModel lifecycle, and hierarchical UI service scopes. `CommunityToolkit.Mvvm` provides a broader set of general-purpose MVVM components, including messaging and validation. Choose NuExt.Minimal.Mvvm when these runtime semantics and UI-oriented composition model are important.
 
 **Q: Do I have to wire WPF CommandManager.RequerySuggested myself?**  
-**A**: No. With the source generator, mark the command with `[UseCommandManager]`, and the generated property will auto-subscribe/unsubscribe for requery.
+**A:** No. With the source generator, mark the command with `[UseCommandManager]`, and the generated property will auto-subscribe/unsubscribe for requery.
 
 **Q: What is the command error flow?**  
-**A**: Exceptions raised during `AsyncCommand` execution are first published to `UnhandledException`; if not handled there, they flow to `AsyncCommand.GlobalUnhandledException`.
+**A:** Exceptions raised during `AsyncCommand` execution are first published to `UnhandledException`; if not handled there, they flow to `AsyncCommand.GlobalUnhandledException`.
+
+**Q: Why does `ViewModelBase` provide hierarchical service access?**  
+**A:** Stable, mandatory dependencies should still be passed through constructors. Hierarchical services are intended for UI-context dependencies that may depend on the current ViewModel tree, such as navigation, dialogs, document context, selection, or local runtime overrides. Each ViewModel can expose a lazy local scope while resolving missing services through **fallback → parent → default**.
 
 **Q: How does the built-in service provider differ from Microsoft.Extensions.DependencyInjection?**  
 **A:** It is a mutable, hierarchical container designed for UI scopes, local overrides, and explicit factory registrations. It does not build arbitrary constructor dependency graphs or replace a general-purpose application container. Use it independently for lightweight UI composition, or place an existing `IServiceProvider` behind it as a parent.
@@ -340,12 +350,8 @@ Use it in one of two ways:
 - **Application scope:** set `ServiceProvider.Default = new ServiceProvider(parent)`, so all ViewModels can resolve app-wide services via the default provider.
 - **Per-VM fallback:** pass it to specific ViewModels (`: base(fallback)`) when you need a VM to resolve “up” into the external container while still allowing local overrides in that VM scope.
 
-**Q: Where are scoped services?**
-**A:** A **ViewModel is the scope**. Register app-wide singletons in `ServiceProvider.Default` (application scope).  
-Register **per-VM overrides** in `ViewModelBase.Services` (the VM’s local scope). Transients are created per resolution.
-
-**Q: What is the “application scope”?**  
-**A:** `ServiceProvider.Default`. Register app-wide singletons there; ViewModels resolve with the order **local → fallback → parent → default**.
+**Q: How are UI scopes organized?**  
+**A:** `ServiceProvider.Default` is the application scope. Each ViewModel can lazily create a local scope through `ViewModelBase.Services`, with resolution following **local → fallback → parent → default**. Transient registrations create a new instance for each resolution.
 
 ## Installation
 
@@ -380,7 +386,7 @@ Or via Visual Studio:
 
 ## Compatibility
 
-- **.NET Standard 2.0+, .NET 8/9/10, .NET Framework 4.6.2+**
+- **.NET Standard 2.0/2.1, .NET 8/9/10, .NET Framework 4.6.2+**
 - **Language**: C# 12+
 
 > **Legacy only:** to use `AsyncValueCommand*` on **.NET Framework 4.6.2** / **.NET Standard 2.0**, see
