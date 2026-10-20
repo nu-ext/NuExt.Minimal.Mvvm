@@ -17,6 +17,7 @@ public static partial class Cast<T>
         : s_targetType;
 
     private static readonly bool s_isEnum = s_underlyingType.IsEnum;
+    private static readonly Type? s_enumUnderlyingType = s_isEnum ? s_underlyingType.GetEnumUnderlyingType() : null;
     private static readonly bool s_isValueType = s_underlyingType.IsValueType;
     private static readonly TypeCode s_typeCode = Type.GetTypeCode(s_underlyingType);
 
@@ -204,7 +205,7 @@ public static partial class Cast<T>
 #endif
             try
             {
-                var underlyingValue = Convert.ChangeType(value, s_underlyingType.GetEnumUnderlyingType(), culture);
+                var underlyingValue = Convert.ChangeType(value, s_enumUnderlyingType!, culture);
                 return (T)Enum.ToObject(s_underlyingType, underlyingValue);
             }
             catch (FormatException)

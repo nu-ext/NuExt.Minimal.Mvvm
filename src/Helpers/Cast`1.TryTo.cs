@@ -108,13 +108,10 @@ partial class Cast<T>
 #else
         try
         {
-            if (Enum.IsDefined(s_underlyingType, str))
-            {
-                result = (T)Enum.Parse(s_underlyingType, str, ignoreCase: false);
-                return true;
-            }
+            result = (T)Enum.Parse(s_underlyingType, str, ignoreCase: false);
+            return true;
         }
-        catch
+        catch (Exception ex) when (ex is ArgumentException or OverflowException)
         {
             // Not a valid enum name
         }
@@ -123,11 +120,11 @@ partial class Cast<T>
         // Try numeric string conversion
         try
         {
-            var underlyingValue = Convert.ChangeType(str, s_underlyingType.GetEnumUnderlyingType(), CultureInfo.InvariantCulture);
+            var underlyingValue = Convert.ChangeType(str, s_enumUnderlyingType!, CultureInfo.InvariantCulture);
             result = (T)Enum.ToObject(s_underlyingType, underlyingValue);
             return true;
         }
-        catch
+        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
         {
             result = default!;
             return false;
@@ -136,77 +133,123 @@ partial class Cast<T>
 
     private static bool TryConvertPrimitiveFromString(string str, CultureInfo culture, [MaybeNullWhen(false)] out T result)
     {
-        bool success = false;
-        object? underlyingValue = null;
-
         switch (s_typeCode)
         {
             case TypeCode.Boolean:
-                success = bool.TryParse(str, out var b);
-                underlyingValue = b;
+                if (bool.TryParse(str, out var b))
+                {
+                    result = (T)(object)b;
+                    return true;
+                }
                 break;
-            case TypeCode.Byte:
-                success = byte.TryParse(str, NumberStyles.Integer, culture, out var bt);
-                underlyingValue = bt;
-                break;
-            case TypeCode.Char:
-                success = char.TryParse(str, out var c);
-                underlyingValue = c;
-                break;
-            case TypeCode.DateTime:
-                success = DateTime.TryParse(str, culture, DateTimeStyles.None, out var dt);
-                underlyingValue = dt;
-                break;
-            case TypeCode.Decimal:
-                success = decimal.TryParse(str, NumberStyles.Number, culture, out var d);
-                underlyingValue = d;
-                break;
-            case TypeCode.Double:
-                success = double.TryParse(str, NumberStyles.Float, culture, out var db);
-                underlyingValue = db;
-                break;
-            case TypeCode.Int16:
-                success = short.TryParse(str, NumberStyles.Integer, culture, out var i16);
-                underlyingValue = i16;
-                break;
-            case TypeCode.Int32:
-                success = int.TryParse(str, NumberStyles.Integer, culture, out var i32);
-                underlyingValue = i32;
-                break;
-            case TypeCode.Int64:
-                success = long.TryParse(str, NumberStyles.Integer, culture, out var i64);
-                underlyingValue = i64;
-                break;
-            case TypeCode.SByte:
-                success = sbyte.TryParse(str, NumberStyles.Integer, culture, out var sb);
-                underlyingValue = sb;
-                break;
-            case TypeCode.Single:
-                success = float.TryParse(str, NumberStyles.Float, culture, out var f);
-                underlyingValue = f;
-                break;
-            case TypeCode.String:
-                underlyingValue = str;
-                success = true;
-                break;
-            case TypeCode.UInt16:
-                success = ushort.TryParse(str, NumberStyles.Integer, culture, out var ui16);
-                underlyingValue = ui16;
-                break;
-            case TypeCode.UInt32:
-                success = uint.TryParse(str, NumberStyles.Integer, culture, out var ui32);
-                underlyingValue = ui32;
-                break;
-            case TypeCode.UInt64:
-                success = ulong.TryParse(str, NumberStyles.Integer, culture, out var ui64);
-                underlyingValue = ui64;
-                break;
-        }
 
-        if (success)
-        {
-            result = (T)underlyingValue!;
-            return true;
+            case TypeCode.Byte:
+                if (byte.TryParse(str, NumberStyles.Integer, culture, out var bt))
+                {
+                    result = (T)(object)bt;
+                    return true;
+                }
+                break;
+
+            case TypeCode.Char:
+                if (char.TryParse(str, out var c))
+                {
+                    result = (T)(object)c;
+                    return true;
+                }
+                break;
+
+            case TypeCode.DateTime:
+                if (DateTime.TryParse(str, culture, DateTimeStyles.None, out var dt))
+                {
+                    result = (T)(object)dt;
+                    return true;
+                }
+                break;
+
+            case TypeCode.Decimal:
+                if (decimal.TryParse(str, NumberStyles.Number, culture, out var d))
+                {
+                    result = (T)(object)d;
+                    return true;
+                }
+                break;
+
+            case TypeCode.Double:
+                if (double.TryParse(str, NumberStyles.Float | NumberStyles.AllowThousands, culture, out var db))
+                {
+                    result = (T)(object)db;
+                    return true;
+                }
+                break;
+
+            case TypeCode.Int16:
+                if (short.TryParse(str, NumberStyles.Integer, culture, out var i16))
+                {
+                    result = (T)(object)i16;
+                    return true;
+                }
+                break;
+
+            case TypeCode.Int32:
+                if (int.TryParse(str, NumberStyles.Integer, culture, out var i32))
+                {
+                    result = (T)(object)i32;
+                    return true;
+                }
+                break;
+
+            case TypeCode.Int64:
+                if (long.TryParse(str, NumberStyles.Integer, culture, out var i64))
+                {
+                    result = (T)(object)i64;
+                    return true;
+                }
+                break;
+
+            case TypeCode.SByte:
+                if (sbyte.TryParse(str, NumberStyles.Integer, culture, out var sb))
+                {
+                    result = (T)(object)sb;
+                    return true;
+                }
+                break;
+
+            case TypeCode.Single:
+                if (float.TryParse(str, NumberStyles.Float | NumberStyles.AllowThousands, culture, out var f))
+                {
+                    result = (T)(object)f;
+                    return true;
+                }
+                break;
+
+            case TypeCode.String:
+                result = (T)(object)str;
+                return true;
+
+            case TypeCode.UInt16:
+                if (ushort.TryParse(str, NumberStyles.Integer, culture, out var ui16))
+                {
+                    result = (T)(object)ui16;
+                    return true;
+                }
+                break;
+
+            case TypeCode.UInt32:
+                if (uint.TryParse(str, NumberStyles.Integer, culture, out var ui32))
+                {
+                    result = (T)(object)ui32;
+                    return true;
+                }
+                break;
+
+            case TypeCode.UInt64:
+                if (ulong.TryParse(str, NumberStyles.Integer, culture, out var ui64))
+                {
+                    result = (T)(object)ui64;
+                    return true;
+                }
+                break;
         }
 
         result = default!;
@@ -220,7 +263,7 @@ partial class Cast<T>
             result = s_convertPrimitive!(value, culture);
             return true;
         }
-        catch
+        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
         {
             result = default!;
             return false;
@@ -231,13 +274,12 @@ partial class Cast<T>
     {
         try
         {
-            var underlyingType = s_underlyingType.GetEnumUnderlyingType();
-            var underlyingValue = Convert.ChangeType(value, underlyingType, culture);
+            var underlyingValue = Convert.ChangeType(value, s_enumUnderlyingType!, culture);
             result = (T)Enum.ToObject(s_underlyingType, underlyingValue);
 
             return true;
         }
-        catch
+        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
         {
             result = default!;
             return false;
@@ -257,7 +299,7 @@ partial class Cast<T>
             result = (T)value;
             return true;
         }
-        catch
+        catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
         {
             result = default!;
             return false;

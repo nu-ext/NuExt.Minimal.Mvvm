@@ -73,12 +73,17 @@ public sealed class WeakEvent<TEventHandler, TEventArgs> where TEventHandler : D
         }
 
         var individualHandlers = handler.GetInvocationList();
+        var weakHandlers = new WeakHandler[individualHandlers.Length];
+
+        // Create invokers outside the lock because initial compilation can be expensive
+        for (var i = 0; i < individualHandlers.Length; i++)
+        {
+            weakHandlers[i] = new WeakHandler((TEventHandler)individualHandlers[i]);
+        }
+
         lock (_handlers)
         {
-            for (var i = 0; i < individualHandlers.Length; i++)
-            {
-                _handlers.Add(new WeakHandler((TEventHandler)individualHandlers[i]));
-            }
+            _handlers.AddRange(weakHandlers);
         }
     }
 
@@ -93,24 +98,33 @@ public sealed class WeakEvent<TEventHandler, TEventArgs> where TEventHandler : D
         var individualHandlers = handler.GetInvocationList();
         lock (_handlers)
         {
-            if (_handlers.Count == 0) return;
+            // Prune dead handlers before matching the invocation list
             for (int i = _handlers.Count - 1; i >= 0; i--)
             {
-                var weakHandler = _handlers[i];
-                if (!weakHandler.TryGetTarget(out _))// Dead handler
+                if (!_handlers[i].TryGetTarget(out _))// Dead handler
                 {
                     _handlers.RemoveAt(i);
-                    continue;
                 }
+            }
 
-                bool remove = false;
+            if (individualHandlers.Length > _handlers.Count) return;
+
+            // Search backwards to remove the last matching invocation list consistent with Delegate.Remove semantics
+            for (int i = _handlers.Count - individualHandlers.Length; i >= 0; i--)
+            {
+                bool matches = true;
                 for (int k = 0; k < individualHandlers.Length; k++)
                 {
-                    if (weakHandler.Matches((TEventHandler)individualHandlers[k])) { remove = true; break; }
+                    if (!_handlers[i + k].Matches((TEventHandler)individualHandlers[k]))
+                    {
+                        matches = false;
+                        break;
+                    }
                 }
-                if (remove)
+                if (matches)
                 {
-                    _handlers.RemoveAt(i);
+                    _handlers.RemoveRange(i, individualHandlers.Length);
+                    return;
                 }
             }
         }
@@ -149,7 +163,9 @@ public sealed class WeakEvent<TEventHandler, TEventArgs> where TEventHandler : D
         finally
         {
 #if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-            System.Buffers.ArrayPool<WeakHandler>.Shared.Return(snapshot, clearArray: true);
+            // Clear pooled references to avoid retaining MethodInfo and invoker metadata
+            Array.Clear(snapshot, 0, count);
+            System.Buffers.ArrayPool<WeakHandler>.Shared.Return(snapshot, clearArray: false);
 #endif
         }
 
