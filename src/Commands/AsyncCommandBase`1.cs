@@ -128,21 +128,21 @@ public abstract class AsyncCommandBase<T> : CommandBase<T>, IAsyncCommand<T>
         cancellationToken.ThrowIfCancellationRequested();
         cancelable.ThrowIfCancellationRequested();
 
-        using var cts = cancellationToken.CanBeCanceled
+        var cts = cancellationToken.CanBeCanceled
             ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
             : new CancellationTokenSource();
-        cancelable.Source = cts;
-
-        cts.Token.ThrowIfCancellationRequested();
-        cancelable.ThrowIfCancellationRequested();
+        cancelable.SetSource(cts);
 
         try
         {
+            cts.Token.ThrowIfCancellationRequested();
+            cancelable.ThrowIfCancellationRequested();
+
             await ExecuteAsyncCore(parameter, cts.Token).ConfigureAwait(ContinueOnCapturedContext);
         }
         finally
         {
-            cancelable.Source = null;
+            cancelable.ReleaseSource();
         }
     }
 
@@ -232,23 +232,70 @@ public abstract class AsyncCommandBase<T> : CommandBase<T>, IAsyncCommand<T>
     /// </remarks>
     internal sealed class Cancelable(int taskId, AsyncCommandBase<T> command) : IDisposable
     {
+        private CancellationTokenSource? _source;
+
         /// <summary>
         /// Gets whether cancellation has been requested via <see cref="IAsyncCommand.Cancel"/>.
         /// </summary>
-        public volatile bool IsCancellationRequested;
+        internal volatile bool IsCancellationRequested;
 
         /// <summary>
-        /// Gets or sets the <see cref="CancellationTokenSource"/> linked to this execution.
+        /// Associates the cancellation source with this execution.
         /// </summary>
-        public volatile CancellationTokenSource? Source;
+        internal void SetSource(CancellationTokenSource source)
+        {
+            bool cancel;
+
+            lock (this)
+            {
+                _source = source;
+                cancel = IsCancellationRequested;
+            }
+
+            if (cancel)
+            {
+                source.Cancel();
+            }
+        }
+
+        /// <summary>
+        /// Detaches and disposes the cancellation source.
+        /// </summary>
+        internal void ReleaseSource()
+        {
+            CancellationTokenSource? source;
+
+            lock (this)
+            {
+                source = _source;
+                _source = null;
+            }
+
+            source?.Dispose();
+        }
 
         /// <summary>
         /// Requests cancellation of this execution.
         /// </summary>
-        public void Cancel()
+        internal void Cancel()
         {
-            IsCancellationRequested = true;
-            Source?.Cancel();
+            CancellationTokenSource? source;
+
+            lock (this)
+            {
+                IsCancellationRequested = true;
+                source = _source;
+            }
+
+            try
+            {
+                // Invoke cancellation callbacks outside the lock
+                source?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // The execution completed concurrently
+            }
         }
 
         /// <summary>
@@ -256,7 +303,6 @@ public abstract class AsyncCommandBase<T> : CommandBase<T>, IAsyncCommand<T>
         /// </summary>
         public void Dispose()
         {
-            Source = null;
             command.UnregisterCancelable(taskId);
         }
 
@@ -264,7 +310,7 @@ public abstract class AsyncCommandBase<T> : CommandBase<T>, IAsyncCommand<T>
         /// Throws <see cref="OperationCanceledException"/> if cancellation was requested.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ThrowIfCancellationRequested()
+        internal void ThrowIfCancellationRequested()
         {
             if (IsCancellationRequested)
             {

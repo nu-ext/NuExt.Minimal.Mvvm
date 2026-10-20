@@ -39,6 +39,8 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
     }
 
     private volatile States _state;
+
+    private readonly Lock _syncRoot = new();
 #else
     private static class States
     {
@@ -48,6 +50,8 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
     }
 
     private volatile int _state;
+
+    private readonly object _syncRoot = new();
 #endif
 
     private ICommand[] _commands;
@@ -157,11 +161,12 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
     public bool TryAdd(ICommand command)
     {
         _ = command ?? throw new ArgumentNullException(nameof(command));
-        CheckDisposingOrDisposed();
 
-        while (true)
+        lock (_syncRoot)
         {
-            var current = Volatile.Read(ref _commands);
+            CheckDisposingOrDisposed();
+
+            var current = _commands;
             if (Contains(current, command))
             {
                 return false;
@@ -176,14 +181,13 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
             next[next.Length - 1] = command;
 #endif
 
-            if (Interlocked.CompareExchange(ref _commands, next, current) == current)
-            {
-                SubscribeOne(command);
-                RaiseCanExecuteChanged();
-                OnPropertyChanged(EventArgsCache.CountPropertyChanged);
-                return true;
-            }
+            SubscribeOne(command);
+            _commands = next;
         }
+
+        RaiseCanExecuteChanged();
+        OnPropertyChanged(EventArgsCache.CountPropertyChanged);
+        return true;
     }
 
     /// <summary>
@@ -195,11 +199,12 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
     public bool TryRemove(ICommand command)
     {
         _ = command ?? throw new ArgumentNullException(nameof(command));
-        CheckDisposingOrDisposed();
 
-        while (true)
+        lock (_syncRoot)
         {
-            var current = Volatile.Read(ref _commands);
+            CheckDisposingOrDisposed();
+
+            var current = _commands;
             int idx = -1;
             for (int i = 0; i < current.Length; i++)
             {
@@ -232,17 +237,13 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
 #endif
             }
 
-            if (Interlocked.CompareExchange(ref _commands, next, current) == current)
-            {
-                UnsubscribeOne(command);
-                if (!IsDisposingOrDisposed)
-                {
-                    RaiseCanExecuteChanged();
-                    OnPropertyChanged(EventArgsCache.CountPropertyChanged);
-                }
-                return true;
-            }
+            _commands = next;
+            UnsubscribeOne(command);
         }
+
+        RaiseCanExecuteChanged();
+        OnPropertyChanged(EventArgsCache.CountPropertyChanged);
+        return true;
     }
 
     /// <summary>
@@ -251,17 +252,25 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
     /// <exception cref="ObjectDisposedException"/>
     public void Clear()
     {
-        CheckDisposingOrDisposed();
-        var oldCommands = Interlocked.Exchange(ref _commands, []);
-        if (oldCommands.Length == 0) return;
+        int oldCount;
 
-        UnsubscribeItems(oldCommands);
-
-        if (!IsDisposingOrDisposed)
+        lock (_syncRoot)
         {
-            RaiseCanExecuteChanged();
-            OnPropertyChanged(EventArgsCache.CountPropertyChanged);
+            CheckDisposingOrDisposed();
+
+            var oldCommands = _commands;
+            oldCount = oldCommands.Length;
+            if (oldCount == 0)
+            {
+                return;
+            }
+
+            _commands = [];
+            UnsubscribeItems(oldCommands);
         }
+
+        RaiseCanExecuteChanged();
+        OnPropertyChanged(EventArgsCache.CountPropertyChanged);
     }
 
     #endregion
@@ -478,33 +487,38 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
     /// </remarks>
     public void Dispose()
     {
-        if (Interlocked.CompareExchange(ref _state, States.Disposing, States.NotDisposed) != States.NotDisposed)
-        {
-            return; // Already disposing or disposed
-        }
+        int oldCount;
 
-        int oldCount = 0;
-        try
+        lock (_syncRoot)
         {
-            var oldCommands = Interlocked.Exchange(ref _commands, []);
+            if (_state != States.NotDisposed)
+            {
+                return;
+            }
+
+            _state = States.Disposing;
+
+            var oldCommands = _commands;
             oldCount = oldCommands.Length;
+            _commands = [];
+
             if (oldCount > 0)
             {
                 UnsubscribeItems(oldCommands);
             }
-        }
-        finally
-        {
-            _state = States.Disposed;
-            OnPropertyChanged(EventArgsCache.IsDisposedPropertyChanged);
 
-            if (oldCount > 0)
-            {
-                RaiseCanExecuteChanged();
-                OnPropertyChanged(EventArgsCache.CountPropertyChanged);
-            }
-            ClearPropertyChangedHandlers();
+            _state = States.Disposed;
         }
+
+        OnPropertyChanged(EventArgsCache.IsDisposedPropertyChanged);
+
+        if (oldCount > 0)
+        {
+            RaiseCanExecuteChanged();
+            OnPropertyChanged(EventArgsCache.CountPropertyChanged);
+        }
+
+        ClearPropertyChangedHandlers();
     }
 
     #endregion
