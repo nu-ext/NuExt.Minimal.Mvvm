@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿#if !NET5_0_OR_GREATER
+using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -16,3 +17,4 @@ internal sealed class ReferenceEqualityComparer : IEqualityComparer<object>, IEq
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int GetHashCode(object obj) => RuntimeHelpers.GetHashCode(obj);
 }
+#endif

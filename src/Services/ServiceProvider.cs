@@ -121,6 +121,50 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
         public long Order => _lazy.Order;
     }
 
+    private readonly struct ServiceRegistration
+    {
+        private readonly ServiceValue _value;
+        private readonly Func<object>? _factory;
+
+        private ServiceRegistration(ServiceValue value)
+        {
+            _value = value;
+        }
+
+        private ServiceRegistration(Func<object> factory)
+        {
+            _factory = factory;
+        }
+
+        public bool IsSingleton => _factory is null;
+
+        public bool IsTransient => _factory is not null;
+
+        public ServiceValue Value
+        {
+            get
+            {
+                Debug.Assert(IsSingleton);
+                return _value;
+            }
+        }
+
+        public object GetService()
+        {
+            return _factory is null ? _value.Service : _factory!();
+        }
+
+        public static ServiceRegistration Singleton(ServiceValue value)
+        {
+            return new ServiceRegistration(value);
+        }
+
+        public static ServiceRegistration Transient(Func<object> factory)
+        {
+            return new ServiceRegistration(factory);
+        }
+    }
+
     private ref struct Scope
     {
         private ServiceProvider? _provider;
@@ -148,8 +192,7 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
     private static readonly IServiceContainer s_default = new ServiceProvider();
     private static volatile IServiceContainer? s_custom;
 
-    private readonly ConcurrentDictionary<ServiceKey, ServiceValue> _services = new();
-    private readonly ConcurrentDictionary<ServiceKey, Func<object>> _transients = new();
+    private readonly ConcurrentDictionary<ServiceKey, ServiceRegistration> _registrations = new();
 
     private readonly IServiceProvider? _parentProvider;
     private readonly Func<Type, string?, object?>? _upstreamResolve;
@@ -357,11 +400,11 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
     #region Resolving
 
     /// <inheritdoc />
-    public object? GetService(Type serviceType) 
+    public object? GetService(Type serviceType)
         => GetService(serviceType: serviceType, name: null, localOnly: false);
 
     /// <inheritdoc />
-    public object? GetService(Type serviceType, string? name) 
+    public object? GetService(Type serviceType, string? name)
         => GetService(serviceType: serviceType, name: name, localOnly: false);
 
     /// <inheritdoc />
@@ -394,31 +437,24 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
 
         var key = CreateServiceKey(serviceType, name);
 
-        #region 1. exact match (type+name)
-        // service exact (type+name)
-        if (_services.TryGetValue(key, out var serviceValue))
+        //1. exact match (type+name)
+        if (_registrations.TryGetValue(key, out var registration))
         {
-            return serviceValue.Service;//<--- service creation point
+            return registration.GetService();//<--- service creation point or NEW instance each time
         }
-
-        // transient exact (type+name)
-        if (_transients.TryGetValue(key, out var transientFactoryExact))
-        {
-            return transientFactoryExact(); // NEW instance each time
-        }
-        #endregion
 
         //2. if named (name != null):
         if (key.Name != null)
         {
             #region 2.1 local search name match & type assignment
-            // service named assignable
-            foreach (var pair in _services)
+            // registration named assignable
+            foreach (var pair in _registrations)
             {
                 if (key.Name != pair.Key.Name) continue;
-                if (pair.Value.IsCreated)
+                registration = pair.Value;
+                if (registration is { IsSingleton: true, Value.IsCreated: true })
                 {
-                    var service = pair.Value.Service;
+                    var service = registration.Value.Service;
                     if (serviceType.IsInstanceOfType(service))
                     {
                         return service;
@@ -427,17 +463,7 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
                 }
                 if (serviceType.IsAssignableFrom(pair.Key.Type))
                 {
-                    return pair.Value.Service;//<--- service creation point
-                }
-            }
-
-            // transient named assignable
-            foreach (var pair in _transients)
-            {
-                if (key.Name != pair.Key.Name) continue;
-                if (serviceType.IsAssignableFrom(pair.Key.Type))
-                {
-                    return pair.Value();//<--- transient creation point
+                    return registration.GetService();//<--- service creation point or transient creation point
                 }
             }
             #endregion
@@ -445,13 +471,14 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
         else //3. if unnamed (name == null):
         {
             #region 3.1 local search by null name & type assignment
-            // service unnamed assignable
-            foreach (var pair in _services)
+            // registration unnamed assignable
+            foreach (var pair in _registrations)
             {
                 if (pair.Key.Name != null) continue;
-                if (pair.Value.IsCreated)
+                registration = pair.Value;
+                if (registration is { IsSingleton: true, Value.IsCreated: true })
                 {
-                    var service = pair.Value.Service;
+                    var service = registration.Value.Service;
                     if (serviceType.IsInstanceOfType(service))
                     {
                         return service;
@@ -460,29 +487,20 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
                 }
                 if (serviceType.IsAssignableFrom(pair.Key.Type))
                 {
-                    return pair.Value.Service;//<--- service creation point
-                }
-            }
-
-            // transient unnamed assignable
-            foreach (var pair in _transients)
-            {
-                if (pair.Key.Name != null) continue;
-                if (serviceType.IsAssignableFrom(pair.Key.Type))
-                {
-                    return pair.Value();//<--- transient creation point
+                    return registration.GetService();//<--- service creation point or transient creation point
                 }
             }
             #endregion
 
             #region 3.2 local search by non-null name & type assignment
-            // service named assignable (fallback within unnamed request)
-            foreach (var pair in _services)
+            // registration named assignable (fallback within unnamed request)
+            foreach (var pair in _registrations)
             {
                 if (pair.Key.Name == null) continue;
-                if (pair.Value.IsCreated)
+                registration = pair.Value;
+                if (registration is { IsSingleton: true, Value.IsCreated: true })
                 {
-                    var service = pair.Value.Service;
+                    var service = registration.Value.Service;
                     if (serviceType.IsInstanceOfType(service))
                     {
                         return service;
@@ -491,17 +509,7 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
                 }
                 if (serviceType.IsAssignableFrom(pair.Key.Type))
                 {
-                    return pair.Value.Service;//<--- service creation point
-                }
-            }
-
-            // transient named assignable (fallback within unnamed request)
-            foreach (var pair in _transients)
-            {
-                if (pair.Key.Name == null) continue;
-                if (serviceType.IsAssignableFrom(pair.Key.Type))
-                {
-                    return pair.Value();//<--- transient creation point
+                    return registration.GetService();//<--- service creation point or transient creation point
                 }
             }
             #endregion
@@ -552,7 +560,7 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
     }
 
     /// <inheritdoc />
-    IEnumerable<object> IServicesProvider.GetServices(Type serviceType) 
+    IEnumerable<object> IServicesProvider.GetServices(Type serviceType)
         => GetServices(serviceType: serviceType);
 
     /// <inheritdoc />
@@ -580,34 +588,24 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
 
         HashSet<object>? services = null;
 
-        foreach (var pair in _services)
+        foreach (var pair in _registrations)
         {
-            if (pair.Value.IsCreated)
+            var registration = pair.Value;
+            if (registration is { IsSingleton: true, Value.IsCreated: true })
             {
-                var service = pair.Value.Service;
+                var service = registration.Value.Service;
                 if (serviceType.IsInstanceOfType(service) && (services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
                 {
                     yield return service;
                 }
                 continue;
             }
+
+            if (registration.IsTransient && !includeTransient) continue;
+
             if (serviceType.IsAssignableFrom(pair.Key.Type))
             {
-                var service = pair.Value.Service;//<--- service creation point
-                if ((services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(service))
-                {
-                    yield return service;
-                }
-            }
-        }
-
-        if (includeTransient)
-        {
-            foreach (var pair in _transients)
-            {
-                if (!serviceType.IsAssignableFrom(pair.Key.Type)) continue;
-
-                var instance = pair.Value(); //<--- transient creation point
+                var instance = registration.GetService();//<--- service creation point or transient creation point
                 if ((services ??= new HashSet<object>(ReferenceEqualityComparer.Instance)).Add(instance))
                 {
                     yield return instance;
@@ -830,56 +828,55 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
 
     private void RegisterServiceCore(ServiceKey key, ServiceValue value, bool throwIfExists)
     {
+        var registration = ServiceRegistration.Singleton(value);
         if (throwIfExists)
         {
-            if (!_services.TryAdd(key, value))
+            if (!_registrations.TryAdd(key, registration))
             {
                 ThrowServiceExistsException(key.Type);
             }
-            _transients.TryRemove(key, out _);
-            OnServiceAdded(key, value);
+
+            if (value.IsCreated)
+            {
+                OnServiceAdded(key, value.Service);
+            }
+
             return;
         }
 
-        bool removeTransient = true;
-        if (_services.TryUpdateOrAdd(key, value, out var oldValue))
+        if (_registrations.TryUpdateOrAdd(key, registration, out var oldRegistration) && oldRegistration is { IsSingleton: true, Value.IsCreated: true })
         {
-            _transients.TryRemove(key, out _);
-            removeTransient = false;
-            OnServiceRemoved(key, oldValue);
+            OnServiceRemoved(key, oldRegistration.Value.Service);
         }
 
-        if (removeTransient)
+        if (value.IsCreated)
         {
-            _transients.TryRemove(key, out _);
+            OnServiceAdded(key, value.Service);
         }
-        OnServiceAdded(key, value);
     }
 
-    private void OnServiceAdded(ServiceKey key, ServiceValue value)
+    private void OnServiceAdded(ServiceKey key, object service)
     {
-        Debug.WriteLine("OnServiceAdded: {0}", key);
-        if (!value.IsCreated) return;
-        OnServiceAdded(value.Service);
+        Debug.WriteLine("OnServiceAdded: {0} {1}", key, service);
+        OnServiceAdded(service);
     }
 
     private void OnServiceActivated(ServiceKey key, object service)
     {
-        Debug.WriteLine("OnServiceActivated: {0}", key);
+        Debug.WriteLine("OnServiceActivated: {0} {1}", key, service);
         OnServiceActivated(service);
     }
 
     private void OnServiceActivationFailed(ServiceKey key, object service)
     {
-        Debug.WriteLine("OnServiceActivationFailed: {0}", key);
+        Debug.WriteLine("OnServiceActivationFailed: {0} {1}", key, service);
         OnServiceActivationFailed(service);
     }
 
-    private void OnServiceRemoved(ServiceKey key, ServiceValue value)
+    private void OnServiceRemoved(ServiceKey key, object service)
     {
-        Debug.WriteLine("OnServiceRemoved: {0}", key);
-        if (!value.IsCreated) return;
-        OnServiceRemoved(value.Service);
+        Debug.WriteLine("OnServiceRemoved: {0} {1}", key, service);
+        OnServiceRemoved(service);
     }
 
     /// <summary>Called when a created service instance is added to the container.</summary>
@@ -942,10 +939,11 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
         CheckDisposed();
 
         bool result = false;
-        foreach (var pair in _services)
+        foreach (var pair in _registrations)
         {
-            if (!pair.Value.IsCreated) continue;
-            if (pair.Value.Service != service) continue;
+            var registration = pair.Value;
+            if (!registration.IsSingleton || !registration.Value.IsCreated) continue;
+            if (registration.Value.Service != service) continue;
             result |= UnregisterService(pair.Key);
         }
         return result;
@@ -973,17 +971,11 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
 
     private bool UnregisterService(ServiceKey key)
     {
-        var removed = false;
+        var removed = _registrations.TryRemove(key, out var registration);
 
-        if (_services.TryRemove(key, out var value))
+        if (removed && registration is { IsSingleton: true, Value.IsCreated: true })
         {
-            OnServiceRemoved(key, value);
-            removed = true;
-        }
-
-        if (_transients.TryRemove(key, out _))
-        {
-            removed = true;
+            OnServiceRemoved(key, registration.Value.Service);
         }
 
         return removed;
@@ -995,13 +987,16 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
     /// <inheritdoc />
     public void Clear()
     {
-        var entries = _services.ToArray();
-        _services.Clear();
-        _transients.Clear();
+        var entries = _registrations.ToArray();
+        _registrations.Clear();
 
-        foreach (var entry in entries)
+        foreach (var pair in entries)
         {
-            OnServiceRemoved(entry.Key, entry.Value);
+            var registration = pair.Value;
+            if (registration is { IsSingleton: true, Value.IsCreated: true })
+            {
+                OnServiceRemoved(pair.Key, registration.Value.Service);
+            }
         }
     }
 
@@ -1015,25 +1010,29 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
 #endif
         CheckDisposed();
 
-        var entries = _services.ToArray();
-        _services.Clear();
+        var entries = new List<ServiceValue>(_registrations.Count);
+        foreach (var pair in _registrations)
+        {
+            var registration = pair.Value;
+            if (registration is { IsSingleton: true, Value.IsCreated: true })
+            {
+                entries.Add(registration.Value);
+            }
+        }
+        _registrations.Clear();
 
-        Array.Sort(entries, static (a, b) => b.Value.Order.CompareTo(a.Value.Order));
+        entries.Sort(static (a, b) => b.Order.CompareTo(a.Order));
 
 #if NET472_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-        var seen = new HashSet<object>(entries.Length, ReferenceEqualityComparer.Instance);
+        var seen = new HashSet<object>(entries.Count, ReferenceEqualityComparer.Instance);
 #else
         var seen = new HashSet<object>(ReferenceEqualityComparer.Instance);
 #endif
 
         List<Exception>? exceptions = null;
-        foreach (var entry in entries)
+        foreach (var value in entries)
         {
-            var value = entry.Value;
-            if (!value.IsCreated)
-            {
-                continue;
-            }
+            Debug.Assert(value.IsCreated);
             Debug.Assert(value.Order != 0, "Created service must have a non-zero Order.");
             var instance = value.Service;
             if (!seen.Add(instance))
@@ -1232,24 +1231,20 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
 
     private void RegisterTransientCore(ServiceKey key, Func<object> serviceFactory, bool throwIfExists)
     {
+        var registration = ServiceRegistration.Transient(serviceFactory);
         if (throwIfExists)
         {
-            if (_services.TryGetValue(key, out _))
-            {
-                ThrowServiceExistsException(key.Type);
-            }
-            if (!_transients.TryAdd(key, serviceFactory))
+            if (!_registrations.TryAdd(key, registration))
             {
                 ThrowServiceExistsException(key.Type);
             }
         }
         else
         {
-            if (_services.TryRemove(key, out var oldValue))
+            if (_registrations.TryUpdateOrAdd(key, registration, out var oldRegistration) && oldRegistration is { IsSingleton: true, Value.IsCreated: true })
             {
-                OnServiceRemoved(key, oldValue);
+                OnServiceRemoved(key, oldRegistration.Value.Service);
             }
-            _transients.TryUpdateOrAdd(key, serviceFactory, out _);
         }
     }
 

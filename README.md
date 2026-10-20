@@ -1,6 +1,6 @@
 # NuExt.Minimal.Mvvm
 
-`NuExt.Minimal.Mvvm` is a **high-performance, dependency-free** MVVM core for .NET focused on **robust async flows** and **deterministic command execution**. It provides a **minimal, clear API** with Bindable/ViewModel base types, a self-validating command model (Relay/Async/Composite), and a lightweight service provider.
+`NuExt.Minimal.Mvvm` is a **high-performance, dependency-free** MVVM core for .NET focused on **robust async flows** and **deterministic command execution**. It provides a **minimal, clear API** with Bindable/ViewModel base types, a self-validating command model (Relay/Async/Composite), and a lightweight, UI-focused service provider with trim- and AOT-friendly factory registration.
 
 [![NuGet](https://img.shields.io/nuget/v/NuExt.Minimal.Mvvm.svg)](https://www.nuget.org/packages/NuExt.Minimal.Mvvm)
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/nu-ext/NuExt.Minimal.Mvvm)
@@ -31,9 +31,11 @@
   - `AsyncValueCommand` / `AsyncValueCommand<T>` — **asynchronous** commands built on `ValueTask` for allocation-sensitive scenarios.
   - `CompositeCommand` — aggregates multiple commands and executes them **sequentially**; awaits `ExecuteAsync(...)` and calls `Execute(...)` for non-async commands.
 
-- **Service Provider Integration**
-  - `Minimal.Mvvm.ServiceProvider`: lightweight service registration/resolution in UI scenarios.
-  - Hierarchical lookup order for ViewModels: **local → fallback → parent → default** (no hidden magic, no reflection).
+- **UI-focused Service Provider**
+  - `Minimal.Mvvm.ServiceProvider` is a lightweight, mutable service container designed for hierarchical UI scopes.
+  - Hierarchical lookup order for ViewModels: **local → fallback → parent → default**.
+  - Supports instance, lazy singleton, transient, named, and runtime-replaceable registrations.
+  - Factory and instance registrations are trim- and AOT-friendly. Type activation is available as a convenience path and requires a preserved public parameterless constructor.
   - Lifetime basics for UI apps:
     - **Singleton (lazy)** — stored per container, created on first resolution.
     - **Transient** — new instance per resolution, not cached.
@@ -328,6 +330,9 @@ You have two options to enable `AsyncValueCommand*` on legacy TFMs:
 
 **Q: What is the command error flow?**  
 **A**: Exceptions raised during `AsyncCommand` execution are first published to `UnhandledException`; if not handled there, they flow to `AsyncCommand.GlobalUnhandledException`.
+
+**Q: How does the built-in service provider differ from Microsoft.Extensions.DependencyInjection?**  
+**A:** It is a mutable, hierarchical container designed for UI scopes, local overrides, and explicit factory registrations. It does not build arbitrary constructor dependency graphs or replace a general-purpose application container. Use it independently for lightweight UI composition, or place an existing `IServiceProvider` behind it as a parent.
 
 **Q: How do I integrate my existing DI container?**
 **A:** Wrap it as a parent via `new ServiceProvider(System.IServiceProvider parent)`.  
