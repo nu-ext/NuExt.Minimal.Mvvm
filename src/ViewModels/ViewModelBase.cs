@@ -417,8 +417,6 @@ public abstract class ViewModelBase : BindableBase, IAsyncInitializable, IParent
     /// </remarks>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        if (_isInitialized) return;
-
         await _initLock.WaitAsync(cancellationToken);
         try
         {
@@ -448,8 +446,6 @@ public abstract class ViewModelBase : BindableBase, IAsyncInitializable, IParent
     /// </remarks>
     public async Task UninitializeAsync(CancellationToken cancellationToken = default)
     {
-        if (!_isInitialized) return;
-
         await _initLock.WaitAsync(cancellationToken);
         try
         {

@@ -214,6 +214,12 @@ public sealed class WeakEvent<TEventHandler, TEventArgs> where TEventHandler : D
             ? Expression.Call(method, castSender, castArgs)
             : Expression.Call(castTarget, method, castSender, castArgs);
 
-        return Expression.Lambda<Action<object?, object?, TEventArgs>>(call, pTarget, pSender, pArgs).Compile();
+        var lambda = Expression.Lambda<Action<object?, object?, TEventArgs>>(call, pTarget, pSender, pArgs);
+
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+        return lambda.Compile(preferInterpretation: !RuntimeFeature.IsDynamicCodeSupported);
+#else
+        return lambda.Compile();
+#endif
     }
 }
