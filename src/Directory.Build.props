@@ -10,6 +10,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/nu-ext/NuExt.Minimal.Mvvm</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <VersionPrefix>0.7.8</VersionPrefix>
   </PropertyGroup>
 
   <!-- SourceLink -->
