@@ -121,6 +121,40 @@ public abstract class ViewModelBase : BindableBase, IAsyncInitializable, IParent
     #region Methods
 
     /// <summary>
+    /// Gets a required service of the specified type.
+    /// </summary>
+    /// <typeparam name="T">The type of service to retrieve.</typeparam>
+    /// <returns>The resolved service instance.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the requested service is not available.
+    /// </exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T GetRequiredService<T>() where T : class
+    {
+        return GetService<T>() ?? throw new InvalidOperationException($"Required service '{typeof(T).FullName}' is not registered.");
+    }
+
+    /// <summary>
+    /// Gets a required named service of the specified type.
+    /// </summary>
+    /// <typeparam name="T">The type of service to retrieve.</typeparam>
+    /// <param name="name">
+    /// The name of the service to resolve. An empty name is treated as unnamed.
+    /// </param>
+    /// <returns>The resolved service instance.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the requested service is not available.
+    /// </exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T GetRequiredService<T>(string? name) where T : class
+    {
+        return GetService<T>(name) ?? throw new InvalidOperationException(name is null
+            ? $"Required service '{typeof(T).FullName}' is not registered."
+            : $"Required service '{typeof(T).FullName}' with name '{name}' is not registered.");
+    }
+
+
+    /// <summary>
     /// Gets a service of the specified type.
     /// </summary>
     /// <typeparam name="T">The type of service to retrieve.</typeparam>
@@ -202,15 +236,12 @@ public abstract class ViewModelBase : BindableBase, IAsyncInitializable, IParent
         var service = _fallbackServices?.GetService(serviceType, name);
         if (service != null) return service;
 
-        switch (ParentViewModel)
+        service = ParentViewModel switch
         {
-            case INamedServiceProvider namedServiceProvider:
-                service = namedServiceProvider.GetService(serviceType, name);
-                break;
-            case IServiceProvider serviceProvider when name is null:
-                service = serviceProvider.GetService(serviceType);
-                break;
-        }
+            INamedServiceProvider namedServiceProvider => namedServiceProvider.GetService(serviceType, name),
+            IServiceProvider serviceProvider when name is null => serviceProvider.GetService(serviceType),
+            _ => service
+        };
         return service ?? ServiceProvider.Default.GetService(serviceType, name);
     }
 
