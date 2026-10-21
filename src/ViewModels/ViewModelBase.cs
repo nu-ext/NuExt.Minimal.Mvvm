@@ -121,6 +121,22 @@ public abstract class ViewModelBase : BindableBase, IAsyncInitializable, IParent
     #region Methods
 
     /// <summary>
+    /// Gets the parent ViewModel as the specified type.
+    /// </summary>
+    /// <typeparam name="TParent">The expected parent ViewModel type.</typeparam>
+    /// <returns>The parent ViewModel.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the parent ViewModel is not assigned or has an incompatible type.
+    /// </exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    protected TParent GetParentViewModel<TParent>() where TParent : class
+    {
+        return ParentViewModel as TParent ?? throw new InvalidOperationException(ParentViewModel is null
+            ? $"Parent ViewModel '{typeof(TParent).FullName}' is not assigned."
+            : $"Parent ViewModel must be of type '{typeof(TParent).FullName}', but was '{ParentViewModel.GetType().FullName}'.");
+    }
+
+    /// <summary>
     /// Gets a required service of the specified type.
     /// </summary>
     /// <typeparam name="T">The type of service to retrieve.</typeparam>
