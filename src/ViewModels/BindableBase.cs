@@ -23,6 +23,16 @@ namespace Minimal.Mvvm;
 /// </remarks>
 public abstract class BindableBase : INotifyPropertyChanged
 {
+    private sealed record PropertyChangedNotificationState(BindableBase Sender, PropertyChangedEventHandler Handler,
+        PropertyChangedEventArgs E1, PropertyChangedEventArgs E2);
+
+    private static readonly SendOrPostCallback s_propertiesChangedCallback = static state =>
+    {
+        var notification = (PropertyChangedNotificationState)state!;
+        notification.Handler(notification.Sender, notification.E1);
+        notification.Handler(notification.Sender, notification.E2);
+    };
+
     private volatile SynchronizationContext? _ui;
     private SendOrPostCallback? _propertyChangedCallback;
 
@@ -79,17 +89,6 @@ public abstract class BindableBase : INotifyPropertyChanged
         Interlocked.Exchange(ref _ui, context);
     }
 
-    /// <summary>
-    /// Removes all subscribers from the <see cref="PropertyChanged"/> event.
-    /// </summary>
-    [DebuggerHidden]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    protected void ClearPropertyChangedHandlers()
-    {
-        PropertyChanged = null;
-    }
-
     private void OnPropertyChanged(object? state)
     {
         PropertyChanged?.Invoke(this, (PropertyChangedEventArgs)state!);
@@ -138,6 +137,29 @@ public abstract class BindableBase : INotifyPropertyChanged
         }
 
         handler(this, args);
+    }
+
+    [DebuggerHidden]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void RaisePropertiesChangedAndClearHandlers(PropertyChangedEventArgs e1, PropertyChangedEventArgs e2)
+    {
+        var handler = PropertyChanged;
+        PropertyChanged = null;
+
+        if (handler == null)
+        {
+            return;
+        }
+
+        var ctx = _ui;
+        if (ctx is not null && !ctx.CheckAccess())
+        {
+            ctx.Post(s_propertiesChangedCallback, new PropertyChangedNotificationState(this, handler, e1, e2));
+            return;
+        }
+
+        handler(this, e1);
+        handler(this, e2);
     }
 
     /// <summary>
