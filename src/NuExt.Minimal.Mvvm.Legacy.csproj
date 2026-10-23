@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <PackageTags>nuext;minimal;mvvm;legacy-only;backport;command;asynccommand;asyncvaluecommand;concurrent;async;net462;netstandard2.0</PackageTags>
-    <Description>Legacy-only add-on for NuExt.Minimal.Mvvm (net462/netstandard2.0). Provides backports (e.g., AsyncValueCommand). Not deprecated; NOT for modern .NET.</Description>
+    <Description>Legacy-only add-on for NuExt.Minimal.Mvvm targeting .NET Framework 4.6.2+ and .NET Standard 2.0. Provides AsyncValueCommand backports for legacy applications. Not intended for modern .NET targets.</Description>
     <RootNamespace>Minimal.Mvvm</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591;NETSDK1233</NoWarn>

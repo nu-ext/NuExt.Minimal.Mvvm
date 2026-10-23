@@ -29,6 +29,10 @@ public interface IServiceContainer : INamedServiceProvider
     /// <summary>
     /// Creates a child container (scope) that delegates to this container as parent.
     /// </summary>
+    /// <returns>The created child container.</returns>
+    /// <exception cref="ObjectDisposedException">
+    /// The container has been disposed.
+    /// </exception>
     IServiceContainer CreateScope();
 
     /// <summary>
@@ -165,10 +169,12 @@ public interface IServiceContainer : INamedServiceProvider
     /// </exception>
     /// <remarks>
     /// <para>
-    /// The factory is invoked at most once per registration (lazy singleton semantics) and the produced instance is cached.
+    /// The factory is invoked until service creation completes successfully.
+    /// The successfully created instance is then cached for subsequent resolutions.
     /// </para>
     /// <para>
-    /// Resolution is thread-safe: the container ensures that at most one instance is created even under concurrent resolution.
+    /// Resolution is thread-safe: the container ensures that only one successfully
+    /// created instance is cached even under concurrent resolution.
     /// </para>
     /// </remarks>
     void RegisterService(Type serviceType, Func<object> callback, bool throwIfExists = false);
@@ -190,10 +196,12 @@ public interface IServiceContainer : INamedServiceProvider
     /// </exception>
     /// <remarks>
     /// <para>
-    /// The factory is invoked at most once per registration (lazy singleton semantics) and the produced instance is cached.
+    /// The factory is invoked until service creation completes successfully.
+    /// The successfully created instance is then cached for subsequent resolutions.
     /// </para>
     /// <para>
-    /// Resolution is thread-safe: the container ensures that at most one instance is created even under concurrent resolution.
+    /// Resolution is thread-safe: the container ensures that only one successfully
+    /// created instance is cached even under concurrent resolution.
     /// </para>
     /// </remarks>
     void RegisterService(Type serviceType, Func<object> callback, string? name, bool throwIfExists = false);
@@ -215,10 +223,12 @@ public interface IServiceContainer : INamedServiceProvider
     /// </exception>
     /// <remarks>
     /// <para>
-    /// The factory is invoked at most once per registration (lazy singleton semantics) and the produced instance is cached.
+    /// The factory is invoked until service creation completes successfully.
+    /// The successfully created instance is then cached for subsequent resolutions.
     /// </para>
     /// <para>
-    /// Resolution is thread-safe: the container ensures that at most one instance is created even under concurrent resolution.
+    /// Resolution is thread-safe: the container ensures that only one successfully
+    /// created instance is cached even under concurrent resolution.
     /// </para>
     /// </remarks>
     void RegisterService(Type serviceType, Type implementationType, Func<object> callback, bool throwIfExists = false);
@@ -241,10 +251,12 @@ public interface IServiceContainer : INamedServiceProvider
     /// </exception>
     /// <remarks>
     /// <para>
-    /// The factory is invoked at most once per registration (lazy singleton semantics) and the produced instance is cached.
+    /// The factory is invoked until service creation completes successfully.
+    /// The successfully created instance is then cached for subsequent resolutions.
     /// </para>
     /// <para>
-    /// Resolution is thread-safe: the container ensures that at most one instance is created even under concurrent resolution.
+    /// Resolution is thread-safe: the container ensures that only one successfully
+    /// created instance is cached even under concurrent resolution.
     /// </para>
     /// </remarks>
     void RegisterService(Type serviceType, Type implementationType, Func<object> callback, string? name, bool throwIfExists = false);
@@ -259,10 +271,10 @@ public interface IServiceContainer : INamedServiceProvider
     /// </exception>
     /// <remarks>
     /// <para>
-    /// The instance is created via the public parameterless constructor on first resolution and then cached.
+    /// The instance is created via the public parameterless constructor on resolution. Once activation completes successfully, the instance is cached for subsequent resolutions.
     /// </para>
     /// <para>
-    /// Activation is thread-safe: the container ensures single activation under concurrent resolution.
+    /// Activation is thread-safe: the container caches at most one successfully activated instance under concurrent resolution. If activation fails, a subsequent resolution may retry it.
     /// </para>
     /// </remarks>
     void RegisterService(Type serviceType, bool throwIfExists = false);
@@ -278,10 +290,10 @@ public interface IServiceContainer : INamedServiceProvider
     /// </exception>
     /// <remarks>
     /// <para>
-    /// The instance is created via the public parameterless constructor on first resolution and then cached.
+    /// The instance is created via the public parameterless constructor on resolution. Once activation completes successfully, the instance is cached for subsequent resolutions.
     /// </para>
     /// <para>
-    /// Activation is thread-safe: the container ensures single activation under concurrent resolution.
+    /// Activation is thread-safe: the container caches at most one successfully activated instance under concurrent resolution. If activation fails, a subsequent resolution may retry it.
     /// </para>
     /// </remarks>
     void RegisterService(Type serviceType, string? name, bool throwIfExists = false);
@@ -299,7 +311,17 @@ public interface IServiceContainer : INamedServiceProvider
     /// <exception cref="InvalidOperationException">
     /// Thrown when a service already exists and <paramref name="throwIfExists"/> is true.
     /// </exception>
-    /// <remarks>If a matching registration exists and <paramref name="throwIfExists"/> is <see langword="false"/>, the existing registration is replaced.</remarks>
+    /// <remarks>
+    /// <para>
+    /// The instance is created via the implementation type's public parameterless constructor on resolution. Once activation completes successfully, the instance is cached for subsequent resolutions.
+    /// </para>
+    /// <para>
+    /// Activation is thread-safe: the container caches at most one successfully activated instance under concurrent resolution. If activation fails, a subsequent resolution may retry it.
+    /// </para>
+    /// <para>
+    /// If a matching registration exists and <paramref name="throwIfExists"/> is <see langword="false"/>, the existing registration is replaced.
+    /// </para>
+    /// </remarks>
     void RegisterService(Type serviceType, Type implementationType, bool throwIfExists = false);
 
     /// <summary>Registers an implementation type to be constructed on first resolution.</summary>
@@ -316,7 +338,17 @@ public interface IServiceContainer : INamedServiceProvider
     /// <exception cref="InvalidOperationException">
     /// Thrown when a service already exists and <paramref name="throwIfExists"/> is true.
     /// </exception>
-    /// <remarks>If a matching registration exists and <paramref name="throwIfExists"/> is <see langword="false"/>, the existing registration is replaced.</remarks>
+    /// <remarks>
+    /// <para>
+    /// The instance is created via the implementation type's public parameterless constructor on resolution. Once activation completes successfully, the instance is cached for subsequent resolutions.
+    /// </para>
+    /// <para>
+    /// Activation is thread-safe: the container caches at most one successfully activated instance under concurrent resolution. If activation fails, a subsequent resolution may retry it.
+    /// </para>
+    /// <para>
+    /// If a matching registration exists and <paramref name="throwIfExists"/> is <see langword="false"/>, the existing registration is replaced.
+    /// </para>
+    /// </remarks>
     void RegisterService(Type serviceType, Type implementationType, string? name, bool throwIfExists = false);
 
     /// <summary>
@@ -360,6 +392,9 @@ public interface IServiceContainer : INamedServiceProvider
     /// <summary>
     /// Removes all registrations from this container.
     /// </summary>
+    /// <exception cref="ObjectDisposedException">
+    /// The container has been disposed.
+    /// </exception>
     void Clear();
 
     /// <summary>

@@ -3,8 +3,7 @@
 **Legacy‑only add‑on** for **`NuExt.Minimal.Mvvm`** targeting **.NET Framework 4.6.2+** and **.NET Standard 2.0**.  
 It provides **backports** that are available on modern .NET in the base package.
 
-> This package is **not deprecated code**. It exists to **support older TFMs**.  
-> Modern .NET (.NET 5+/netstandard2.1) does **not** use this package (no compatible assets).
+> This package is **not deprecated code**. It exists to support older TFMs and should only be referenced by projects targeting .NET Framework 4.6.2 or .NET Standard 2.0.
 
 [![NuGet](https://img.shields.io/nuget/v/NuExt.Minimal.Mvvm.Legacy.svg)](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.Legacy)
 [![License](https://img.shields.io/github/license/nu-ext/NuExt.Minimal.Mvvm?label=license)](https://github.com/nu-ext/NuExt.Minimal.Mvvm/blob/main/LICENSE)
@@ -16,8 +15,7 @@ It provides **backports** that are available on modern .NET in the base package.
 ## Compatibility & Dependencies
 
 - **Targets:** `net462`, `netstandard2.0`.
-- **Dependency:** `System.Threading.Tasks.Extensions` (provides `ValueTask` on legacy TFMs).  
-  This dependency is **not added** on modern TFMs because the package exposes **no assets** there.
+- **Dependency:** `System.Threading.Tasks.Extensions`, which provides `ValueTask` support for the targeted legacy frameworks. 
 
 ## Installation
 
@@ -30,9 +28,15 @@ dotnet add package NuExt.Minimal.Mvvm.Legacy
 
 That’s it — `AsyncValueCommand*` become available on legacy targets.
 
-> Multi‑TFM projects: reference both packages.
-> - On modern TFMs, `NuExt.Minimal.Mvvm` provides `AsyncValueCommand*`; the legacy package is ignored (no assets).
-> - On legacy TFMs, this package provides `AsyncValueCommand*`; the base package does not include them there.
+Multi-targeted projects should reference this package only for legacy target frameworks:
+
+```xml
+<ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework' or '$(TargetFramework)' == 'netstandard2.0'">
+  <PackageReference Include="NuExt.Minimal.Mvvm.Legacy" Version="..." />
+</ItemGroup>
+```
+
+On legacy targets, this package provides `AsyncValueCommand` and `AsyncValueCommand<T>`; the base package does not include them there.
 
 ## Example
 

@@ -61,6 +61,7 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
     /// </summary>
     /// <param name="commands">The collection of commands to be aggregated.</param>
     /// <exception cref="ArgumentNullException">Thrown when the commands parameter is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="commands"/> contains a <see langword="null"/> command.</exception>
     public CompositeCommand(IEnumerable<ICommand> commands)
     {
         _ = commands ?? throw new ArgumentNullException(nameof(commands));
@@ -73,6 +74,7 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
     /// Initializes a new instance with the specified commands. Duplicates are removed, preserving first occurrence.
     /// </summary>
     /// <param name="commands">A read-only span of commands to be aggregated.</param>
+    /// <exception cref="ArgumentException"><paramref name="commands"/> contains a <see langword="null"/> command.</exception>
     public CompositeCommand(params ReadOnlySpan<ICommand> commands)
     {
         _commands = DeduplicatePreserveOrder(commands, nameof(commands));
@@ -84,6 +86,7 @@ public sealed class CompositeCommand : AsyncCommandBase<object?>, IDisposable
     /// </summary>
     /// <param name="commands">The array of commands to be aggregated.</param>
     /// <exception cref="ArgumentNullException">Thrown when the commands parameter is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="commands"/> contains a <see langword="null"/> command.</exception>
     public CompositeCommand(params ICommand[] commands)
     {
         _ = commands ?? throw new ArgumentNullException(nameof(commands));

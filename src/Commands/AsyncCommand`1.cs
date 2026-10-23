@@ -22,11 +22,11 @@ public sealed class AsyncCommand<T> : AsyncCommandBase<T>
     /// </summary>
     /// <param name="execute">The asynchronous execution logic with cancellation support.</param>
     /// <param name="canExecute">The logic to determine if the command can execute.</param>
-    /// <exception cref="ArgumentNullException">Thrown if the execute argument is <see langword="null"/>.</exception>
     /// <remarks>
     /// The delegate receives a <see cref="CancellationToken"/> that is canceled when 
     /// <see cref="AsyncCommandBase{T}.Cancel"/> is called or when an external token is canceled.
     /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="execute"/> is <see langword="null"/>.</exception>
     public AsyncCommand(Func<T, CancellationToken, Task> execute, Func<T, bool>? canExecute)
     {
         _execute = execute ?? throw new ArgumentNullException(nameof(execute));
@@ -41,6 +41,7 @@ public sealed class AsyncCommand<T> : AsyncCommandBase<T>
     /// The delegate receives a <see cref="CancellationToken"/> that is canceled when 
     /// <see cref="AsyncCommandBase{T}.Cancel"/> is called or when an external token is canceled.
     /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="execute"/> is <see langword="null"/>.</exception>
     public AsyncCommand(Func<T, CancellationToken, Task> execute) : this(execute, null)
     {
     }
@@ -50,11 +51,11 @@ public sealed class AsyncCommand<T> : AsyncCommandBase<T>
     /// </summary>
     /// <param name="execute">The asynchronous execution logic.</param>
     /// <param name="canExecute">The logic to determine if the command can execute.</param>
-    /// <exception cref="ArgumentNullException">Thrown if the execute argument is <see langword="null"/>.</exception>
     /// <remarks>
     /// The provided <paramref name="execute"/> delegate does not accept a <see cref="CancellationToken"/>.
     /// For cancellation support, use the constructor accepting <see cref="Func{T, CancellationToken, Task}"/>.
     /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="execute"/> is <see langword="null"/>.</exception>
     public AsyncCommand(Func<T, Task> execute, Func<T, bool>? canExecute)
     {
         _ = execute ?? throw new ArgumentNullException(nameof(execute));
@@ -66,11 +67,11 @@ public sealed class AsyncCommand<T> : AsyncCommandBase<T>
     /// Initializes a new instance of the <see cref="AsyncCommand{T}"/> class that can always execute.
     /// </summary>
     /// <param name="execute">The asynchronous execution logic.</param>
-    /// <exception cref="ArgumentNullException">Thrown if the execute argument is <see langword="null"/>.</exception>
     /// <remarks>
     /// The provided <paramref name="execute"/> delegate does not accept a <see cref="CancellationToken"/>.
     /// For cancellation support, use the constructor accepting <see cref="Func{T, CancellationToken, Task}"/>.
     /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="execute"/> is <see langword="null"/>.</exception>
     public AsyncCommand(Func<T, Task> execute) : this(execute, null)
     {
 

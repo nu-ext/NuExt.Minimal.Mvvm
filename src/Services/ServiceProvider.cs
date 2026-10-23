@@ -16,7 +16,7 @@ namespace Minimal.Mvvm;
 /// <para>Thread safety:</para>
 /// <list type="bullet">
 ///   <item><description>Registration and resolution are thread-safe.</description></item>
-///   <item><description>Lazy initialization creates at most one instance per registration under concurrent resolution.</description></item>
+///   <item><description>Lazy initialization caches at most one successfully activated instance per registration under concurrent resolution.</description></item>
 /// </list>
 /// <para>Dependency cycles:</para>
 /// <list type="bullet">
@@ -189,7 +189,6 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
 
     #endregion
 
-    private static readonly IServiceContainer s_default = new ServiceProvider();
     private static volatile IServiceContainer? s_custom;
 
     private readonly ConcurrentDictionary<ServiceKey, ServiceRegistration> _registrations = new();
@@ -261,9 +260,9 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
     /// </remarks>
     public static IServiceContainer Default
     {
-        get => s_custom ?? s_default;
+        get => s_custom ?? field;
         set => s_custom = value;
-    }
+    } = new ServiceProvider();
 
     /// <summary>
     /// Gets or sets a value indicating whether an <see cref="InvalidOperationException"/>
@@ -288,6 +287,7 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public IServiceContainer CreateScope()
     {
+        CheckDisposed();
         return new ServiceProvider(this);
     }
 
@@ -356,7 +356,15 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
     {
         using var scope = EnterScope(key);
         var service = Activator.CreateInstance(serviceType)!;
-        OnServiceActivated(key, service);
+        try
+        {
+            OnServiceActivated(key, service);
+        }
+        catch
+        {
+            OnServiceActivationFailed(key, service);
+            throw;
+        }
         return service;
     }
 
@@ -987,6 +995,12 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
     /// <inheritdoc />
     public void Clear()
     {
+        CheckDisposed();
+        ClearCore();
+    }
+
+    private void ClearCore()
+    {
         var entries = _registrations.ToArray();
         _registrations.Clear();
 
@@ -1063,7 +1077,7 @@ public class ServiceProvider : IServiceContainer, IServicesProvider, IDisposable
             return;
         }
 
-        Clear();
+        ClearCore();
         Debug.Assert(!_dependencyValidationStack.IsValueCreated || _dependencyValidationStack.Value!.Count == 0);
         _parentReentrancyGuard.Dispose();
         _dependencyValidationStack.Dispose();

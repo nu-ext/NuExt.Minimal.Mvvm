@@ -39,12 +39,14 @@ public static partial class Cast<T>
     }
 
     /// <summary>
-    /// Validates that type <typeparamref name="T"/> can be assigned to the specified target type.
+    /// Validates that the non-null runtime representation of <typeparamref name="T"/> can be assigned to the specified target type.
     /// </summary>
     /// <param name="targetType">The target type to validate assignment to.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="targetType"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="targetType"/> is <see langword="null"/>.
+    /// </exception>
     /// <exception cref="InvalidCastException">
-    /// Thrown when type <typeparamref name="T"/> cannot be assigned to <paramref name="targetType"/>.
+    /// The non-null runtime representation of <typeparamref name="T"/> cannot be assigned to <paramref name="targetType"/>.
     /// </exception>
     public static void ValidateTargetType(Type targetType)
     {
@@ -52,8 +54,7 @@ public static partial class Cast<T>
 
         if (!targetType.IsAssignableFrom(s_underlyingType))
         {
-            throw new InvalidCastException(
-                $"Type '{s_underlyingType}' cannot be assigned to target type '{targetType}'.");
+            throw new InvalidCastException($"Type '{s_underlyingType}' cannot be assigned to target type '{targetType}'.");
         }
     }
 

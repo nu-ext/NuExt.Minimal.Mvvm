@@ -272,7 +272,7 @@ public class AsyncCommandTTests
         // Arrange
         var command = new AsyncCommand<int>(async (param, ct) =>
         {
-            await Task.Delay(200, ct);
+            await Task.Delay(500, ct);
         });
 
         var propertyChanges = new List<string>();

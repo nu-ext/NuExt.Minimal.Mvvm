@@ -206,17 +206,18 @@ public sealed class WeakEvent<TEventHandler, TEventArgs> where TEventHandler : D
         var pSender = Expression.Parameter(typeof(object), "sender");
         var pArgs = Expression.Parameter(typeof(TEventArgs), "args");
 
-        var castTarget = Expression.Convert(pTarget, targetType);
         var castSender = Expression.Convert(pSender, parameters[0].ParameterType);
         var castArgs = Expression.Convert(pArgs, parameters[1].ParameterType);
 
         var call = method.IsStatic
             ? Expression.Call(method, castSender, castArgs)
-            : Expression.Call(castTarget, method, castSender, castArgs);
+            : Expression.Call(Expression.Convert(pTarget, targetType), method, castSender, castArgs);
 
         var lambda = Expression.Lambda<Action<object?, object?, TEventArgs>>(call, pTarget, pSender, pArgs);
 
 #if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+        // Prefer compiled expressions when dynamic code is supported.
+        // In AOT environments, use the expression interpreter instead.
         return lambda.Compile(preferInterpretation: !RuntimeFeature.IsDynamicCodeSupported);
 #else
         return lambda.Compile();

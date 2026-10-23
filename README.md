@@ -17,8 +17,8 @@
   - `Minimal.Mvvm.WeakEvent` — lightweight weak-event storage for `(object sender, TEventArgs)` handlers.
 
 - **Command model (self-validating)**
-  - All commands (`RelayCommand`, `RelayCommand<T>`, `AsyncCommand`, `AsyncCommand<T>`, `AsyncValueCommand`, `AsyncValueCommand<T>`, `CompositeCommand`) validate their state internally:
-    if `CanExecute(parameter)` is `false`, `Execute(parameter)` does nothing. This guarantees consistent behavior for both UI-bound and programmatic calls.
+  - `RelayCommand`, `AsyncCommand`, `AsyncValueCommand`, their generic variants, and `CompositeCommand` validate their execution state internally.
+  - If `CanExecute(parameter)` returns `false`, `Execute(parameter)` does nothing, ensuring consistent behavior for UI-bound and programmatic calls.
 
   **Semantics**
   - Async commands provide cancellation and reentrancy control (`AllowConcurrentExecution`, default: **false**).
@@ -38,7 +38,7 @@
   - Supports instance, lazy singleton, transient, named, and runtime-replaceable registrations.
   - Factory and instance registrations are trim- and AOT-friendly. Type activation is available as a convenience path and requires a preserved public parameterless constructor.
   - Lifetime basics for UI apps:
-    - **Singleton (lazy)** — stored per container, created on first resolution.
+    - **Singleton (lazy)** — stored per container, created on the first successful resolution.
     - **Transient** — new instance per resolution, not cached.
     - **Scope** — a **ViewModel** acts as a scope; `ViewModelBase.Services` is created lazily, and created local singletons are released during uninitialization.
     - **Application scope**
@@ -319,13 +319,11 @@ the generator will create the command property and wire WPF requery in the prope
 
 You have two options to enable `AsyncValueCommand*` on legacy TFMs:
 
-- **Recommended**: install the binary add-on  
-  ```sh
-  dotnet add package NuExt.Minimal.Mvvm.Legacy
-  ```
-  This adds `AsyncValueCommand*` for `net462`/`netstandard2.0` and pulls `System.Threading.Tasks.Extensions` **only** on legacy.
+- **Recommended for legacy-only projects**: install the binary add-on:  
+  `dotnet add package NuExt.Minimal.Mvvm.Legacy`
 
-- **Sources-only workflow**: opt-in via `.Sources` and `NUEXT_ENABLE_VALUETASK` + `System.Threading.Tasks.Extensions`.
+  This adds `AsyncValueCommand` and `AsyncValueCommand<T>` for .NET Framework 4.6.2 and .NET Standard 2.0 and references `System.Threading.Tasks.Extensions`.
+- **Sources-only workflow**: opt in through `NuExt.Minimal.Mvvm.Sources` by defining `NUEXT_ENABLE_VALUETASK` and referencing `System.Threading.Tasks.Extensions`.
 
 ## FAQ
 

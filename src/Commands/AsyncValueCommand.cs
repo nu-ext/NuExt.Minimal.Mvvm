@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace Minimal.Mvvm;
 
+/// <summary>
+/// Represents an asynchronous command that uses <see cref="ValueTask"/> for execution without a parameter.
+/// </summary>
 /// <remarks>
 /// <para>
 /// This command is optimized for scenarios where the execution delegate often completes synchronously
