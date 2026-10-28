@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Minimal.Mvvm;
+﻿namespace Minimal.Mvvm;
 
 /// <summary>
 /// Represents a ViewModel that can accept an initialization parameter.
