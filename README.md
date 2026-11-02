@@ -8,6 +8,10 @@
 [![License](https://img.shields.io/github/license/nu-ext/NuExt.Minimal.Mvvm?label=license)](https://github.com/nu-ext/NuExt.Minimal.Mvvm/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/nuget/dt/NuExt.Minimal.Mvvm.svg)](https://www.nuget.org/packages/NuExt.Minimal.Mvvm)
 
+## Architecture
+
+See [ARCHITECTURE.md](https://github.com/nu-ext/NuExt.Minimal.Mvvm/blob/main/ARCHITECTURE.md) for the lifecycle, ownership, service, and framework integration model.
+
 ## Features
 
 - **Core**
