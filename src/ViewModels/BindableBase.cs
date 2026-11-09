@@ -453,66 +453,66 @@ public abstract class BindableBase : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property and the old value after the property is set.
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value and the new value after the property is set.
     /// </summary>
     /// <typeparam name="T">The type of the property.</typeparam>
     /// <param name="storage">The backing field for the property.</param>
     /// <param name="value">The new value for the property.</param>
-    /// <param name="changedCallback">Callback to invoke with the name of the property and the old value after the value has been changed.</param>
+    /// <param name="changedCallback">Callback to invoke with the old value and the new value after the value has been changed.</param>
     /// <param name="e">The event data containing the name of the property that changed.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T>? changedCallback, PropertyChangedEventArgs e)
+    protected bool SetProperty<T>(ref T storage, T value, Action<T, T>? changedCallback, PropertyChangedEventArgs e)
     {
         if (!SetProperty(ref storage, value, e, out var oldValue)) return false;
-        changedCallback?.Invoke(e.PropertyName, oldValue);
+        changedCallback?.Invoke(oldValue, value);
         return true;
     }
 
     /// <summary>
-    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property and the old value after the property is set.
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value and the new value after the property is set.
     /// </summary>
     /// <typeparam name="T">The type of the property.</typeparam>
     /// <param name="storage">The backing field for the property.</param>
     /// <param name="value">The new value for the property.</param>
-    /// <param name="changedCallback">Callback to invoke with the name of the property and the old value after the value has been changed.</param>
+    /// <param name="changedCallback">Callback to invoke with the old value and the new value after the value has been changed.</param>
     /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T>? changedCallback, [CallerMemberName] string? propertyName = null)
+    protected bool SetProperty<T>(ref T storage, T value, Action<T, T>? changedCallback, [CallerMemberName] string? propertyName = null)
     {
         if (!SetProperty(ref storage, value, out var oldValue, propertyName)) return false;
-        changedCallback?.Invoke(propertyName, oldValue);
+        changedCallback?.Invoke(oldValue, value);
         return true;
     }
 
     /// <summary>
-    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property, the old value, and the new value after the property is set.
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value, the new value, and the name of the property after the property is set.
     /// </summary>
     /// <typeparam name="T">The type of the property.</typeparam>
     /// <param name="storage">The backing field for the property.</param>
     /// <param name="value">The new value for the property.</param>
-    /// <param name="changedCallback">Callback to invoke with the name of the property, the old value, and the new value after the value has been changed.</param>
+    /// <param name="changedCallback">Callback to invoke with the old value, the new value, and the name of the property after the value has been changed.</param>
     /// <param name="e">The event data containing the name of the property that changed.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T, T>? changedCallback, PropertyChangedEventArgs e)
+    protected bool SetProperty<T>(ref T storage, T value, Action<T, T, string?>? changedCallback, PropertyChangedEventArgs e)
     {
         if (!SetProperty(ref storage, value, e, out var oldValue)) return false;
-        changedCallback?.Invoke(e.PropertyName, oldValue, value);
+        changedCallback?.Invoke(oldValue, value, e.PropertyName);
         return true;
     }
 
     /// <summary>
-    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property, the old value, and the new value after the property is set.
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value, the new value, and the name of the property after the property is set.
     /// </summary>
     /// <typeparam name="T">The type of the property.</typeparam>
     /// <param name="storage">The backing field for the property.</param>
     /// <param name="value">The new value for the property.</param>
-    /// <param name="changedCallback">Callback to invoke with the name of the property, the old value, and the new value after the value has been changed.</param>
+    /// <param name="changedCallback">Callback to invoke with the old value, the new value, and the name of the property after the value has been changed.</param>
     /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T, T>? changedCallback, [CallerMemberName] string? propertyName = null)
+    protected bool SetProperty<T>(ref T storage, T value, Action<T, T, string?>? changedCallback, [CallerMemberName] string? propertyName = null)
     {
         if (!SetProperty(ref storage, value, out var oldValue, propertyName)) return false;
-        changedCallback?.Invoke(propertyName, oldValue, value);
+        changedCallback?.Invoke(oldValue, value, propertyName);
         return true;
     }
 
@@ -551,75 +551,75 @@ public abstract class BindableBase : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property and the old value after the property is set.
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value and the new value after the property is set.
     /// </summary>
     /// <typeparam name="T">The type of the property.</typeparam>
     /// <param name="storage">The backing field for the property.</param>
     /// <param name="value">The new value for the property.</param>
-    /// <param name="changedCallback">Callback to invoke with the name of the property and the old value after the value has been changed.</param>
+    /// <param name="changedCallback">Callback to invoke with the old value and the new value after the value has been changed.</param>
     /// <param name="e">The event data containing the name of the property that changed.</param>
     /// <param name="oldValue">Outputs the old value of the property before it was changed.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T>? changedCallback, PropertyChangedEventArgs e, out T oldValue)
+    protected bool SetProperty<T>(ref T storage, T value, Action<T, T>? changedCallback, PropertyChangedEventArgs e, out T oldValue)
     {
         if (!SetProperty(ref storage, value, e, out oldValue)) return false;
-        changedCallback?.Invoke(e.PropertyName, oldValue);
+        changedCallback?.Invoke(oldValue, value);
         return true;
     }
 
     /// <summary>
-    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property and the old value after the property is set.
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value and the new value after the property is set.
     /// </summary>
     /// <typeparam name="T">The type of the property.</typeparam>
     /// <param name="storage">The backing field for the property.</param>
     /// <param name="value">The new value for the property.</param>
-    /// <param name="changedCallback">Callback to invoke with the name of the property and the old value after the value has been changed.</param>
+    /// <param name="changedCallback">Callback to invoke with the old value and the new value after the value has been changed.</param>
     /// <param name="oldValue">Outputs the old value of the property before it was changed.</param>
     /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T>? changedCallback, out T oldValue, [CallerMemberName] string? propertyName = null)
+    protected bool SetProperty<T>(ref T storage, T value, Action<T, T>? changedCallback, out T oldValue, [CallerMemberName] string? propertyName = null)
     {
         if (!SetProperty(ref storage, value, out oldValue, propertyName)) return false;
-        changedCallback?.Invoke(propertyName, oldValue);
+        changedCallback?.Invoke(oldValue, value);
         return true;
     }
 
     /// <summary>
-    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property, the old value, and the new value after the property is set.
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value, the new value, and the name of the property after the property is set.
     /// </summary>
     /// <typeparam name="T">The type of the property.</typeparam>
     /// <param name="storage">The backing field for the property.</param>
     /// <param name="value">The new value for the property.</param>
-    /// <param name="changedCallback">Callback to invoke with the name of the property, the old value, and the new value after the value has been changed.</param>
+    /// <param name="changedCallback">Callback to invoke with the old value, the new value, and the name of the property after the value has been changed.</param>
     /// <param name="e">The event data containing the name of the property that changed.</param>
     /// <param name="oldValue">Outputs the old value of the property before it was changed.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T, T>? changedCallback, PropertyChangedEventArgs e, out T oldValue)
+    protected bool SetProperty<T>(ref T storage, T value, Action<T, T, string?>? changedCallback, PropertyChangedEventArgs e, out T oldValue)
     {
         if (!SetProperty(ref storage, value, e, out oldValue)) return false;
-        changedCallback?.Invoke(e.PropertyName, oldValue, value);
+        changedCallback?.Invoke(oldValue, value, e.PropertyName);
         return true;
     }
 
     /// <summary>
-    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property, the old value, and the new value after the property is set.
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value, the new value, the name of the property after the property is set.
     /// </summary>
     /// <typeparam name="T">The type of the property.</typeparam>
     /// <param name="storage">The backing field for the property.</param>
     /// <param name="value">The new value for the property.</param>
-    /// <param name="changedCallback">Callback to invoke with the name of the property, the old value, and the new value after the value has been changed.</param>
+    /// <param name="changedCallback">Callback to invoke with the old value, the new value, and the name of the property after the value has been changed.</param>
     /// <param name="oldValue">Outputs the old value of the property before it was changed.</param>
     /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T, T>? changedCallback, out T oldValue, [CallerMemberName] string? propertyName = null)
+    protected bool SetProperty<T>(ref T storage, T value, Action<T, T, string?>? changedCallback, out T oldValue, [CallerMemberName] string? propertyName = null)
     {
         if (!SetProperty(ref storage, value, out oldValue, propertyName)) return false;
-        changedCallback?.Invoke(propertyName, oldValue, value);
+        changedCallback?.Invoke(oldValue, value, propertyName);
         return true;
     }
 
     /// <summary>
-    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the property name, old value, and new value.
+    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value.
     /// </summary>
     /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
     /// <typeparam name="T">The type of the property.</typeparam>
@@ -627,18 +627,18 @@ public abstract class BindableBase : INotifyPropertyChanged
     /// <param name="newValue">The new value for the property.</param>
     /// <param name="model">The model containing the property.</param>
     /// <param name="setter">The callback used to set the property on the model.</param>
-    /// <param name="changedCallback">The callback invoked with the property name, old value, and new value after the property has been changed.</param>
+    /// <param name="changedCallback">The callback invoked with the old value after the property has been changed.</param>
     /// <param name="e">The event data containing the name of the property that changed.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<string?, T, T>? changedCallback, PropertyChangedEventArgs e)
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<T>? changedCallback, PropertyChangedEventArgs e)
     {
         if (!SetProperty(oldValue, newValue, model, setter, e)) return false;
-        changedCallback?.Invoke(e.PropertyName, oldValue, newValue);
+        changedCallback?.Invoke(oldValue);
         return true;
     }
 
     /// <summary>
-    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the property name, old value, and new value.
+    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value.
     /// </summary>
     /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
     /// <typeparam name="T">The type of the property.</typeparam>
@@ -646,13 +646,89 @@ public abstract class BindableBase : INotifyPropertyChanged
     /// <param name="newValue">The new value for the property.</param>
     /// <param name="model">The model containing the property.</param>
     /// <param name="setter">The callback used to set the property on the model.</param>
-    /// <param name="changedCallback">The callback invoked with the property name, old value, and new value after the property has been changed.</param>
+    /// <param name="changedCallback">The callback invoked with the old value after the property has been changed.</param>
     /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
     /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
-    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<string?, T, T>? changedCallback, [CallerMemberName] string? propertyName = null)
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<T>? changedCallback, [CallerMemberName] string? propertyName = null)
     {
         if (!SetProperty(oldValue, newValue, model, setter, propertyName)) return false;
-        changedCallback?.Invoke(propertyName, oldValue, newValue);
+        changedCallback?.Invoke(oldValue);
+        return true;
+    }
+
+    /// <summary>
+    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value and the new value.
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="oldValue">The current value of the property.</param>
+    /// <param name="newValue">The new value for the property.</param>
+    /// <param name="model">The model containing the property.</param>
+    /// <param name="setter">The callback used to set the property on the model.</param>
+    /// <param name="changedCallback">The callback invoked with the old value and the new value after the property has been changed.</param>
+    /// <param name="e">The event data containing the name of the property that changed.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<T, T>? changedCallback, PropertyChangedEventArgs e)
+    {
+        if (!SetProperty(oldValue, newValue, model, setter, e)) return false;
+        changedCallback?.Invoke(oldValue, newValue);
+        return true;
+    }
+
+    /// <summary>
+    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value and the new value.
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="oldValue">The current value of the property.</param>
+    /// <param name="newValue">The new value for the property.</param>
+    /// <param name="model">The model containing the property.</param>
+    /// <param name="setter">The callback used to set the property on the model.</param>
+    /// <param name="changedCallback">The callback invoked with the old value and the new value after the property has been changed.</param>
+    /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<T, T>? changedCallback, [CallerMemberName] string? propertyName = null)
+    {
+        if (!SetProperty(oldValue, newValue, model, setter, propertyName)) return false;
+        changedCallback?.Invoke(oldValue, newValue);
+        return true;
+    }
+
+    /// <summary>
+    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value, the new value, and the property name.
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="oldValue">The current value of the property.</param>
+    /// <param name="newValue">The new value for the property.</param>
+    /// <param name="model">The model containing the property.</param>
+    /// <param name="setter">The callback used to set the property on the model.</param>
+    /// <param name="changedCallback">The callback invoked with the old value, the new value, and the property name after the property has been changed.</param>
+    /// <param name="e">The event data containing the name of the property that changed.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<T, T, string?>? changedCallback, PropertyChangedEventArgs e)
+    {
+        if (!SetProperty(oldValue, newValue, model, setter, e)) return false;
+        changedCallback?.Invoke(oldValue, newValue, e.PropertyName);
+        return true;
+    }
+
+    /// <summary>
+    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value, the new value, and the property name.
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="oldValue">The current value of the property.</param>
+    /// <param name="newValue">The new value for the property.</param>
+    /// <param name="model">The model containing the property.</param>
+    /// <param name="setter">The callback used to set the property on the model.</param>
+    /// <param name="changedCallback">The callback invoked with the old value, the new value, and the property name after the property has been changed.</param>
+    /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<T, T, string?>? changedCallback, [CallerMemberName] string? propertyName = null)
+    {
+        if (!SetProperty(oldValue, newValue, model, setter, propertyName)) return false;
+        changedCallback?.Invoke(oldValue, newValue, propertyName);
         return true;
     }
 
