@@ -400,6 +400,7 @@ Or via Visual Studio:
 - [NuExt.Presentation.Wpf](https://github.com/nu-ext/NuExt.Presentation.Wpf)
 - [NuExt.Minimal.Mvvm.SourceGenerator](https://github.com/nu-ext/NuExt.Minimal.Mvvm.SourceGenerator)
 - [NuExt.Minimal.Mvvm.Wpf](https://github.com/nu-ext/NuExt.Minimal.Mvvm.Wpf)
+- [NuExt.Minimal.Mvvm.AvalonDock](https://github.com/nu-ext/NuExt.Minimal.Mvvm.AvalonDock)
 - [NuExt.Minimal.Mvvm.MahApps.Metro](https://github.com/nu-ext/NuExt.Minimal.Mvvm.MahApps.Metro)
 - [NuExt.System](https://github.com/nu-ext/NuExt.System)
 - [NuExt.System.Data](https://github.com/nu-ext/NuExt.System.Data)
