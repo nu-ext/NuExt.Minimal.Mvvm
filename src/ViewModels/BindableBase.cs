@@ -619,6 +619,44 @@ public abstract class BindableBase : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the property name, old value, and new value.
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="oldValue">The current value of the property.</param>
+    /// <param name="newValue">The new value for the property.</param>
+    /// <param name="model">The model containing the property.</param>
+    /// <param name="setter">The callback used to set the property on the model.</param>
+    /// <param name="changedCallback">The callback invoked with the property name, old value, and new value after the property has been changed.</param>
+    /// <param name="e">The event data containing the name of the property that changed.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<string?, T, T>? changedCallback, PropertyChangedEventArgs e)
+    {
+        if (!SetProperty(oldValue, newValue, model, setter, e)) return false;
+        changedCallback?.Invoke(e.PropertyName, oldValue, newValue);
+        return true;
+    }
+
+    /// <summary>
+    /// Sets a property on the specified model, raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the property name, old value, and new value.
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="oldValue">The current value of the property.</param>
+    /// <param name="newValue">The new value for the property.</param>
+    /// <param name="model">The model containing the property.</param>
+    /// <param name="setter">The callback used to set the property on the model.</param>
+    /// <param name="changedCallback">The callback invoked with the property name, old value, and new value after the property has been changed.</param>
+    /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, Action<string?, T, T>? changedCallback, [CallerMemberName] string? propertyName = null)
+    {
+        if (!SetProperty(oldValue, newValue, model, setter, propertyName)) return false;
+        changedCallback?.Invoke(propertyName, oldValue, newValue);
+        return true;
+    }
+
+    /// <summary>
     /// Updates the specified property if the new value is different from the current value,
     /// raises the <see cref="PropertyChanged"/> event, and allows cancellation through the <see cref="CanSetProperty{T}"/> method.
     /// Outputs the old value of the property before it was changed.
@@ -660,6 +698,50 @@ public abstract class BindableBase : INotifyPropertyChanged
             return false;
         }
         storage = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    /// <summary>
+    /// Sets a property on the specified model and raises the <see cref="PropertyChanged"/> event if the value has changed.
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="oldValue">The current value of the property.</param>
+    /// <param name="newValue">The new value for the property.</param>
+    /// <param name="model">The model containing the property.</param>
+    /// <param name="setter">The callback used to set the property on the model.</param>
+    /// <param name="e">The event data containing the name of the property that changed.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, PropertyChangedEventArgs e)
+    {
+        if (EqualityComparer<T>.Default.Equals(oldValue, newValue) || !CanSetProperty(oldValue, newValue, e.PropertyName))
+        {
+            return false;
+        }
+        setter(model, newValue);
+        OnPropertyChanged(e);
+        return true;
+    }
+
+    /// <summary>
+    /// Sets a property on the specified model and raises the <see cref="PropertyChanged"/> event if the value has changed.
+    /// </summary>
+    /// <typeparam name="TModel">The type of the model containing the property.</typeparam>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="oldValue">The current value of the property.</param>
+    /// <param name="newValue">The new value for the property.</param>
+    /// <param name="model">The model containing the property.</param>
+    /// <param name="setter">The callback used to set the property on the model.</param>
+    /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<TModel, T>(T oldValue, T newValue, TModel model, Action<TModel, T> setter, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(oldValue, newValue) || !CanSetProperty(oldValue, newValue, propertyName))
+        {
+            return false;
+        }
+        setter(model, newValue);
         OnPropertyChanged(propertyName);
         return true;
     }
