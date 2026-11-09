@@ -485,6 +485,38 @@ public abstract class BindableBase : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property, the old value, and the new value after the property is set.
+    /// </summary>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="storage">The backing field for the property.</param>
+    /// <param name="value">The new value for the property.</param>
+    /// <param name="changedCallback">Callback to invoke with the name of the property, the old value, and the new value after the value has been changed.</param>
+    /// <param name="e">The event data containing the name of the property that changed.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T, T>? changedCallback, PropertyChangedEventArgs e)
+    {
+        if (!SetProperty(ref storage, value, e, out var oldValue)) return false;
+        changedCallback?.Invoke(e.PropertyName, oldValue, value);
+        return true;
+    }
+
+    /// <summary>
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property, the old value, and the new value after the property is set.
+    /// </summary>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="storage">The backing field for the property.</param>
+    /// <param name="value">The new value for the property.</param>
+    /// <param name="changedCallback">Callback to invoke with the name of the property, the old value, and the new value after the value has been changed.</param>
+    /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T, T>? changedCallback, [CallerMemberName] string? propertyName = null)
+    {
+        if (!SetProperty(ref storage, value, out var oldValue, propertyName)) return false;
+        changedCallback?.Invoke(propertyName, oldValue, value);
+        return true;
+    }
+
+    /// <summary>
     /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the old value after the property is set.
     /// </summary>
     /// <typeparam name="T">The type of the property.</typeparam>
@@ -553,6 +585,40 @@ public abstract class BindableBase : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property, the old value, and the new value after the property is set.
+    /// </summary>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="storage">The backing field for the property.</param>
+    /// <param name="value">The new value for the property.</param>
+    /// <param name="changedCallback">Callback to invoke with the name of the property, the old value, and the new value after the value has been changed.</param>
+    /// <param name="e">The event data containing the name of the property that changed.</param>
+    /// <param name="oldValue">Outputs the old value of the property before it was changed.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T, T>? changedCallback, PropertyChangedEventArgs e, out T oldValue)
+    {
+        if (!SetProperty(ref storage, value, e, out oldValue)) return false;
+        changedCallback?.Invoke(e.PropertyName, oldValue, value);
+        return true;
+    }
+
+    /// <summary>
+    /// Sets the property and raises the <see cref="PropertyChanged"/> event if the value has changed, and invokes a callback with the name of the property, the old value, and the new value after the property is set.
+    /// </summary>
+    /// <typeparam name="T">The type of the property.</typeparam>
+    /// <param name="storage">The backing field for the property.</param>
+    /// <param name="value">The new value for the property.</param>
+    /// <param name="changedCallback">Callback to invoke with the name of the property, the old value, and the new value after the value has been changed.</param>
+    /// <param name="oldValue">Outputs the old value of the property before it was changed.</param>
+    /// <param name="propertyName">The name of the property. This optional parameter can be omitted because of CallerMemberName attribute.</param>
+    /// <returns><see langword="true"/> if the value was changed; otherwise, <see langword="false"/>.</returns>
+    protected bool SetProperty<T>(ref T storage, T value, Action<string?, T, T>? changedCallback, out T oldValue, [CallerMemberName] string? propertyName = null)
+    {
+        if (!SetProperty(ref storage, value, out oldValue, propertyName)) return false;
+        changedCallback?.Invoke(propertyName, oldValue, value);
+        return true;
+    }
+
+    /// <summary>
     /// Updates the specified property if the new value is different from the current value,
     /// raises the <see cref="PropertyChanged"/> event, and allows cancellation through the <see cref="CanSetProperty{T}"/> method.
     /// Outputs the old value of the property before it was changed.
@@ -608,6 +674,6 @@ internal static partial class EventArgsCache
 
     private static readonly PropertyChangedEventArgs s_allPropsChanged = new(null);
 
-    public static PropertyChangedEventArgs Get(string? propertyName) => propertyName is null ? s_allPropsChanged 
+    public static PropertyChangedEventArgs Get(string? propertyName) => propertyName is null ? s_allPropsChanged
         : s_cache.GetOrAdd(propertyName, static name => new PropertyChangedEventArgs(name));
 }
