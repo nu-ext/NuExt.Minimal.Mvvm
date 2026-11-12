@@ -388,7 +388,7 @@ Or via Visual Studio:
 
 ## Compatibility
 
-- **.NET Standard 2.0/2.1, .NET 8/9/10, .NET Framework 4.6.2+**
+- **.NET Standard 2.0/2.1, .NET 8/9/10/11, .NET Framework 4.6.2+**
 - **Language**: C# 12+
 
 > **Legacy only:** to use `AsyncValueCommand*` on **.NET Framework 4.6.2** / **.NET Standard 2.0**, see

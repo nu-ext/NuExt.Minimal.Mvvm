@@ -157,8 +157,10 @@ public class CastTests
         [Test]
         public void To_Decimal_ConvertsFromDouble()
         {
-            var result = Cast<decimal>.To(123.45);
-            Assert.That(result, Is.EqualTo(123.45m));
+            double value = 123.45;
+
+            var result = Cast<decimal>.To(value);
+            Assert.That(result, Is.EqualTo((decimal)value));
         }
     }
 
