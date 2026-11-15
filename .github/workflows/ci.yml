@@ -7,9 +7,22 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
 jobs:
   build_test:
     runs-on: windows-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -18,9 +31,7 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: |
-            10.0.x
-            11.0.x
+          dotnet-version: 11.0.x
 
       - name: Show dotnet info
         run: dotnet --info
@@ -28,16 +39,16 @@ jobs:
       - name: Cache NuGet packages
         uses: actions/cache@v6
         with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/global.json', '**/nuget.config') }}
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets', '**/global.json', '**/nuget.config', '**/packages.lock.json') }}
           restore-keys: |
             nuget-${{ runner.os }}-
 
       - name: Restore
-        run: dotnet restore --nologo
+        run: dotnet restore --nologo -p:NuGetAudit=true
 
       - name: Build
-        run: dotnet build -c Release --no-restore --nologo -warnaserror
+        run: dotnet build -c Release --no-restore --nologo -warnaserror -p:ContinuousIntegrationBuild=true
 
       - name: Test
-        run: dotnet test --configuration Release --no-build
+        run: dotnet test -c Release --no-build --no-restore --nologo --logger "trx"
