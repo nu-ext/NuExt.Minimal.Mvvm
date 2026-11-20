@@ -51,4 +51,4 @@ jobs:
         run: dotnet build -c Release --no-restore --nologo -warnaserror -p:ContinuousIntegrationBuild=true
 
       - name: Test
-        run: dotnet test -c Release --no-build --no-restore --nologo --logger "trx"
+        run: dotnet test -c Release --no-build --no-restore --nologo
