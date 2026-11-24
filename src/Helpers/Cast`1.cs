@@ -48,11 +48,19 @@ public static partial class Cast<T>
     /// <exception cref="InvalidCastException">
     /// The non-null runtime representation of <typeparamref name="T"/> cannot be assigned to <paramref name="targetType"/>.
     /// </exception>
+    /// <remarks>
+    /// A nullable value type is validated against its underlying type, because a value of type <typeparamref name="T"/>
+    /// is always assignable to <see cref="Nullable{T}"/> of the same underlying type. For example,
+    /// <c>ValidateTargetType(typeof(bool?))</c> succeeds for <see cref="bool"/>, which is what a binding target such as
+    /// <c>ToggleButton.IsChecked</c> requires.
+    /// </remarks>
     public static void ValidateTargetType(Type targetType)
     {
         _ = targetType ?? throw new ArgumentNullException(nameof(targetType));
 
-        if (!targetType.IsAssignableFrom(s_underlyingType))
+        Type effectiveTargetType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+        if (!effectiveTargetType.IsAssignableFrom(s_underlyingType))
         {
             throw new InvalidCastException($"Type '{s_underlyingType}' cannot be assigned to target type '{targetType}'.");
         }
