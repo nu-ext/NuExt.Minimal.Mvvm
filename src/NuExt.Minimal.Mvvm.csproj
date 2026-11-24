@@ -20,6 +20,7 @@
     <SymbolPackageFormat></SymbolPackageFormat>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <ContentTargetFolders>contentFiles</ContentTargetFolders>
+    <EmbedUntrackedSources>false</EmbedUntrackedSources>
     <!--<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>-->
     <!--<GenerateAssemblyInfo>false</GenerateAssemblyInfo>-->
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
@@ -27,11 +28,8 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(IncludeSource)' == 'true'">
-    <Content Include="**\*.cs" Pack="true" PackagePath="contentFiles/cs/any/Minimal.Mvvm" BuildAction="Compile" />
-    <Content Remove="obj\**" />
-    <Content Remove="obj-legacy\**" />
-    <Content Remove="bin\**" />
-    <Content Remove="bin-legacy\**" />
+    <Content Include="**\*.cs" Exclude="obj\**;obj-legacy\**;bin\**;bin-legacy\**"
+             Pack="true" PackagePath="contentFiles/cs/any/Minimal.Mvvm" BuildAction="Compile" />
   </ItemGroup>
 
   <ItemGroup>
