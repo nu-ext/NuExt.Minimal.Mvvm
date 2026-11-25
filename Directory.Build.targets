@@ -1,0 +1,11 @@
+<Project>
+  <!-- Runtime async (async2): async methods are lowered to the runtime-managed state machines
+       (MethodImplOptions.Async) instead of compiler-generated ones. Opt-out: -p:RuntimeAsync=false.
+       .NET 11 only: on .NET 10 the runtime marks AsyncHelpers as evaluation-only (SYSLIB5007/CA2252). -->
+  <PropertyGroup>
+    <RuntimeAsync Condition="'$(RuntimeAsync)' == ''">true</RuntimeAsync>
+    <RuntimeAsyncSupported Condition="'$(RuntimeAsync)' == 'true' and '$(TargetFrameworkVersion)' != ''">$([MSBuild]::VersionGreaterThanOrEquals('$(TargetFrameworkVersion)', '11.0'))</RuntimeAsyncSupported>
+    <Features Condition="'$(RuntimeAsyncSupported)' == 'true' and '$(Features)' == ''">runtime-async=on</Features>
+    <Features Condition="'$(RuntimeAsyncSupported)' == 'true' and '$(Features)' != ''">$(Features);runtime-async=on</Features>
+  </PropertyGroup>
+</Project>
